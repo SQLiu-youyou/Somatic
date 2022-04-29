@@ -1,5 +1,3 @@
-from curses.ascii import SO
-from re import S
 import numpy as np
 from genotype import cal_CIPOS
 
@@ -19,9 +17,10 @@ def generate_final_ins(cluster_list,candidate_single_SV,chr,min_size):
             str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
     # print(candidate_single_SV)
 
-def cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio):
-    threshold_gloab = 0.2
-    detailed_length_ratio = 0.8
+def cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio, threshold_gloab,\
+    detailed_length_ratio):
+    # threshold_gloab = 0.2
+    # detailed_length_ratio = 0.8
     '''
     第二轮按INS_len聚类
     1.长度相邻的两条read,len差值小于30%的平均长度,聚成一类
@@ -88,7 +87,7 @@ def cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_siz
         else:
             generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
 
-def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size,lenth_ratio):
+def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size, lenth_ratio, threshold_gloab, detailed_length_ratio):
     #首先按照起始位点坐标，sigs聚成一类
     '''
     第一轮按INS_pos聚类
@@ -121,7 +120,8 @@ def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size,lenth_rat
                 # if ins_pos == 2584331:
                 #     print(cluster_list)
                 #     print(len(cluster_list))
-                cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio)
+                cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio,\
+                    threshold_gloab, detailed_length_ratio)
             #无论继续处理与否，都需要将当前sig放入新一轮的处理中
             cluster_list = list()
             cluster_list.append([ins_pos, ins_len, read_id])
@@ -129,7 +129,8 @@ def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size,lenth_rat
     #对最后一个cluster的处理
     if len(cluster_list) >= min_support:
         # print(cluster_list)
-        cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio)
+        cluster_through_len(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio,\
+            threshold_gloab, detailed_length_ratio)
     file.close()
     return candidate_single_SV
 

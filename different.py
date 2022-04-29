@@ -24,8 +24,6 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
 
 
 if __name__=='__main__':
-    # max_support = 100
-
     normal_sv_file = open(sys.argv[1],'r')
     normal_sv = dict()
     normal_sv['INS'] = dict()

@@ -2,11 +2,12 @@ from description import load_sigs_chr
 from cluster_INS import run_ins,resolution_INS
 import statistics
 import sys
-from numpy import append, promote_types
+from numpy import append, min_scalar_type, promote_types
 import pysam
 import cigar
 from python_utils import listify
 from multiprocessing import Pool
+from parameter import parseArgs
 import os
 import argparse
 import time
@@ -14,8 +15,8 @@ import gc
 # from Bio import SeqIO
 
 
-def generate_candidate_in_a_read(chr_name,sig_list,candidate,read_name):
-    merge_ins_threshold = 200
+def generate_candidate_in_a_read(chr_name,sig_list,candidate,read_name, combine_min_size):
+    # combine_min_size = 200
     #cuteSV是500
     
     #对同一条read中，很接近的两个ins进行合并
@@ -31,7 +32,7 @@ def generate_candidate_in_a_read(chr_name,sig_list,candidate,read_name):
         temp_sig += [sig_list[0][0]]
         for sig in sig_list[1:]:
             # temp_sig[2] = sig[0]
-            if sig[0] - temp_sig[2] <= merge_ins_threshold:
+            if sig[0] - temp_sig[2] <= combine_min_size:
                 temp_sig[1] = temp_sig[1] + sig[1] 
                 temp_sig[2] = sig[0]
             else:
@@ -62,10 +63,11 @@ def detect_flag(Flag):
 	return back_sig
 dic_starnd = {1: '+', 2: '-'}
 
-def generate_candidate_intra_read(split_read,read_length,read_name,candidate):
+def generate_candidate_intra_read(split_read,read_length,read_name,candidate,chase_ins_min_size, \
+    chase_ins_max_size):
     #cuteSV 30
-    min_size = 20 
-    max_size = 100000
+    # chase_ins_min_size = 20 
+    # chase_ins_max_size = 100000
     '''
 	read_start	read_end	ref_start	ref_end     chr	    strand
 	#0			#1			#2			#3		    #4	    #5
@@ -82,19 +84,20 @@ def generate_candidate_intra_read(split_read,read_length,read_name,candidate):
                 ele1 = [read_length-sp_list[i+1][1],read_length-sp_list[i+1][0]]+sp_list[i+1][2:]
                 ele2 = [read_length-sp_list[i][1],read_length-sp_list[i][0]]+sp_list[i][2:]
             #与dup相反
-            if ele1[3] - ele2[2] < min_size:
+            if ele1[3] - ele2[2] < chase_ins_min_size:
                 #sv长度（read差距-ref差距）大于最小设定长度并小于最大sv长度限制, ref上差距 < 100, 
-                if ele2[0] - ele1[1] - (ele2[2] - ele1[3]) >= min_size:
+                if ele2[0] - ele1[1] - (ele2[2] - ele1[3]) >= chase_ins_min_size:
                     if ele2[2] - ele1[3] <= 100 and \
-                            (ele2[0] - ele1[1] - (ele2[2] - ele1[3]) <= max_size or max_size == -1):
+                            (ele2[0] - ele1[1] - (ele2[2] - ele1[3]) <= chase_ins_max_size or chase_ins_max_size == -1):
                         if ele1[4] not in candidate['INS']:
                             candidate['INS'][ele1[4]] = list()
                         candidate['INS'][ele1[4]].append([(ele1[1]+ele2[3])/2, \
                             ele2[0] - ele1[1] - (ele2[2] - ele1[3]),read_name])
 
 
-def organize_supple_info(primary_info,supple_info,read_length,read_name,candidate):
-    max_split_parts = 7
+def organize_supple_info(primary_info,supple_info,read_length,read_name,candidate,\
+    max_split_parts, chase_ins_min_size, chase_ins_max_size):
+    # max_split_parts = 7
 
     split_read = list()
     if len(primary_info) > 0:
@@ -130,12 +133,14 @@ def organize_supple_info(primary_info,supple_info,read_length,read_name,candidat
                     chr,'-'])
     # or max_split_parts == -1:
     if len(split_read) > 0 and len(split_read) <= max_split_parts:
-        generate_candidate_intra_read(split_read,read_length,read_name,candidate)
+        generate_candidate_intra_read(split_read,read_length,read_name,candidate, chase_ins_min_size, \
+            chase_ins_max_size)
 
 
-def parse_read(chr_name,read,candidate):
-    min_mapq = 20
-    sig_SV_size = 20    
+def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_split_parts, \
+    chase_ins_min_size, chase_ins_max_size, combine_min_size):
+    # min_mapq = 20
+    # sig_min_cigar_size = 20    
     process_signal = detect_flag(read.flag)
     Combine_sig_in_same_read_ins = list()
     #找到所有ins的变异（inter）(reference染色体，起始位置，片段长度)
@@ -163,7 +168,7 @@ def parse_read(chr_name,read,candidate):
         for cigar_pair in read.cigar:
             if cigar_pair[0] in [0, 2, 7, 8]:
                 shift_ins += cigar_pair[1]
-            if cigar_pair[0] == 1 and cigar_pair[1] >=  sig_SV_size:
+            if cigar_pair[0] == 1 and cigar_pair[1] >=  sig_min_cigar_size:
                 Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1]])
         if read.cigar[-1][0] == 4:
             soft_right= read.cigar[-1][1]
@@ -180,7 +185,7 @@ def parse_read(chr_name,read,candidate):
     #         print(read_name)
     
     # #inter
-    generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_ins,candidate,read_name)
+    generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_ins,candidate,read_name, combine_min_size)
     
     '''
     INTRA
@@ -204,15 +209,18 @@ def parse_read(chr_name,read,candidate):
             if tag[0] == 'SA':
                 supple_info = tag[1].split(';')[:-1]
                 #intra
-                organize_supple_info(primary_info,supple_info,read.query_length,read_name,candidate)
+                organize_supple_info(primary_info,supple_info,read.query_length,read_name,\
+                candidate, max_split_parts, chase_ins_min_size, chase_ins_max_size)
        
 
-def single_pipe(sam_path,task):
+def single_pipe(sam_path,task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
+    chase_ins_max_size, combine_min_size):
     candidate = dict()
     candidate['INS'] = dict()
     samfile = pysam.AlignmentFile(sam_path)
     for read in samfile.fetch(task[0],task[1],task[2]):
-        parse_read(task[0],read,candidate)
+        parse_read(task[0],read,candidate, min_mapq, sig_min_cigar_size, max_split_parts,\
+        chase_ins_min_size, chase_ins_max_size, combine_min_size)
     # if len(candidate['INS']) != 0 :
     #     print(candidate)
     samfile.close()
@@ -235,7 +243,9 @@ def multi_run_wrapper(args):
 	return single_pipe(*args)
 
     
-def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor_or_normal,lenth_ratio):
+def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor_or_normal,\
+    lenth_ratio, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size, chase_ins_max_size,\
+    combine_min_size, threshold_gloab, detailed_length_ratio):
     # 使用pysam将read读进程序，并保存
     normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
     # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
@@ -258,7 +268,8 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     analysis_pools = Pool(processes=24)
     os.mkdir("%ssignatures"%"./")
     for task in task_list:
-        para = [(bam_path,task)]
+        para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
+            chase_ins_max_size, combine_min_size)]
         analysis_pools.map_async(multi_run_wrapper, para)
     analysis_pools.close()
     analysis_pools.join()
@@ -281,7 +292,8 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     analysis_pools = Pool(processes=24)
     # print(value_sv)
     for chr in value_sv['INS']:
-        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,lenth_ratio)]
+        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
+            lenth_ratio, threshold_gloab, detailed_length_ratio)]
         result_sv.append(analysis_pools.map_async(run_ins,para))
         print("Finish %s:%s"%(chr,'INS'))
         
@@ -305,14 +317,18 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     # print(semi_result)
     return semi_result
 
-if __name__=='__main__':
+def main_ctrl(args, argv):
     # batch = 10000000
     # max_cluster_bias_INS = 50
     # min_support = 3（49x）
     # min_size_INS = 20
     # lenth_ratio = 0
     print("resolve normal bam")
-    normal_sv_list = solve_bam(10000000, 50, 3, 20, sys.argv[1], "normal",0)
+    # normal_sv_list = solve_bam(10000000, 50, 3, 20, sys.argv[1], "normal",0)
+    normal_sv_list = solve_bam(args.batches, args.max_cluster_bias_INS, args.normal_min_support, \
+        args.normal_min_size, sys.argv[1], "normal", args.normal_length_ratio_flag, args.min_mapq, \
+        args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+        args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
     file1 = open("normal_sv","w")
     for ele in normal_sv_list:
         for i in range(0,11):
@@ -326,10 +342,21 @@ if __name__=='__main__':
     # min_size = 50
     # len_ratio
     print("resolve tumor bam")
-    tumor_sv_list = solve_bam(10000000, 50, 20, 50, sys.argv[2], "tumor",1)
+    # tumor_sv_list = solve_bam(10000000, 50, 20, 50, sys.argv[2], "tumor",1)
+    tumor_sv_list = solve_bam(args.batches, args.max_cluster_bias_INS, args.tumor_min_support, \
+        args.tumor_min_size, sys.argv[2], "tumor", args.tumor_length_ratio_flag, args.min_mapq, \
+        args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+        args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
     file2 = open("tumor_sv","w")
     for ele in tumor_sv_list:
         for i in range(0,11):
             file2.write(str(ele[i])+'\t')
         file2.write(str(ele[11])+'\n')
     file2.close()
+
+def run(argv):
+    args = parseArgs(argv)
+    main_ctrl(args, argv)
+
+if __name__=='__main__':
+    run(sys.argv[1:])
