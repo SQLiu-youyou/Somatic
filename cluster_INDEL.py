@@ -140,11 +140,11 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV):
     # 按ins_len聚类是，允许的len差值的最大值
     DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * np.mean(global_len)
     
-    for ele in cluster_list:
-        if ele[0]>= 110393325 and ele[0] <= 110393334:
-            print(SortedList)
-            print(len(SortedList))
-            print(DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP)
+    # for ele in cluster_list:
+    #     if ele[0]>= 110393325 and ele[0] <= 110393334:
+    #         print(SortedList)
+    #         print(len(SortedList))
+    #         print(DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP)
     to_SV_list = list()
     to_SV_list.append(SortedList[0])
     for ele in SortedList[1:]:

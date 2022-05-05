@@ -96,6 +96,8 @@ def generate_candidate_intra_read(split_read,read_length,read_name,candidate,cha
     #cuteSV 30
     # chase_ins_min_size = 20 
     # chase_ins_max_size = 100000
+    chase_del_min_size = 20
+    chase_del_max_size = 500000
     '''
 	read_start	read_end	ref_start	ref_end     chr	    strand
 	#0			#1			#2			#3		    #4	    #5
@@ -113,6 +115,7 @@ def generate_candidate_intra_read(split_read,read_length,read_name,candidate,cha
                 ele2 = [read_length-sp_list[i][1],read_length-sp_list[i][0]]+sp_list[i][2:]
             #与dup相反
             if ele1[3] - ele2[2] < chase_ins_min_size:
+                #INS
                 #sv长度（read差距-ref差距）大于最小设定长度并小于最大sv长度限制, ref上差距 < 100, 
                 if ele2[0] - ele1[1] - (ele2[2] - ele1[3]) >= chase_ins_min_size:
                     if ele2[2] - ele1[3] <= 100 and \
@@ -121,7 +124,14 @@ def generate_candidate_intra_read(split_read,read_length,read_name,candidate,cha
                             candidate['INS'][ele1[4]] = list()
                         candidate['INS'][ele1[4]].append([(ele1[1]+ele2[3])/2, \
                             ele2[0] - ele1[1] - (ele2[2] - ele1[3]),read_name])
-
+                #DEL
+                if ele2[2] - ele1[3] - (ele2[0] - ele1[1]) >= chase_del_min_size:
+                    if ele2[0] - ele1[1] <= 100 and \
+                            (ele2[2] - ele1[3] - (ele2[0] - ele1[1]) <= chase_del_max_size or chase_ins_max_size == -1):
+                        if ele1[4] not in candidate['DEL']:
+                            candidate['DEL'][ele1[4]] = list()
+                        candidate['DEL'][ele1[4]].append([ele1[3],\
+                            ele2[2] - ele1[3] - (ele2[0] - ele1[1]), read_name])
 
 def organize_supple_info(primary_info,supple_info,read_length,read_name,candidate,\
     max_split_parts, chase_ins_min_size, chase_ins_max_size):
@@ -227,7 +237,7 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
     #         print(Combine_sig_in_same_read_ins)
     #         print(read_name)
     
-    # #inter
+    #inter
     # generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_ins,candidate,read_name, combine_min_size, 'INS')
     
     generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_del,candidate,read_name, combine_min_size, 'DEL')
@@ -238,23 +248,23 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
     3.organize_supple_info处理S_read的信息[read_start,read_end,ref_start,ref_end,chr,strand]
     4.generate_candidate_intra_read,通过相邻read之间的相邻关系,确定candiadte
     '''
-    # if process_signal == 1 or process_signal == 2:
-    #     if read.mapq >= min_mapq:
-    #         if process_signal == 1: #正链
-    #             primary_info=[soft_left,read.query_length-soft_right,read_align_start,read_align_end,\
-    #         chr_name,dic_starnd[process_signal]]
-    #         else: #负链
-    #             primary_info=[soft_right,read.query_length-soft_left,read_align_start,read_align_end,\
-    #         chr_name,dic_starnd[process_signal]]
-    #     else:
-    #         primary_info = []
-    #     Tags = read.get_tags()
-    #     for tag in Tags:
-    #         if tag[0] == 'SA':
-    #             supple_info = tag[1].split(';')[:-1]
-    #             #intra
-    #             organize_supple_info(primary_info,supple_info,read.query_length,read_name,\
-    #             candidate, max_split_parts, chase_ins_min_size, chase_ins_max_size)
+    if process_signal == 1 or process_signal == 2:
+        if read.mapq >= min_mapq:
+            if process_signal == 1: #正链
+                primary_info=[soft_left,read.query_length-soft_right,read_align_start,read_align_end,\
+            chr_name,dic_starnd[process_signal]]
+            else: #负链
+                primary_info=[soft_right,read.query_length-soft_left,read_align_start,read_align_end,\
+            chr_name,dic_starnd[process_signal]]
+        else:
+            primary_info = []
+        Tags = read.get_tags()
+        for tag in Tags:
+            if tag[0] == 'SA':
+                supple_info = tag[1].split(';')[:-1]
+                #intra
+                organize_supple_info(primary_info,supple_info,read.query_length,read_name,\
+                candidate, max_split_parts, chase_ins_min_size, chase_ins_max_size)
        
 
 def single_pipe(sam_path,task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
@@ -294,42 +304,42 @@ def multi_run_wrapper(args):
 def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor_or_normal,\
     lenth_ratio, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size, chase_ins_max_size,\
     combine_min_size, threshold_gloab, detailed_length_ratio):
-    # # 使用pysam将read读进程序，并保存
-    # normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
-    # # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
-    # chr_number = len(normal_sam_file.get_index_statistics())
-    # #区块划分基因组
-    # task_list = list()
-    # ref_name_list = list()
+    # 使用pysam将read读进程序，并保存
+    normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
+    # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
+    chr_number = len(normal_sam_file.get_index_statistics())
+    #区块划分基因组
+    task_list = list()
+    ref_name_list = list()
 
-    # for chr in normal_sam_file.get_index_statistics():
-    #     ref_name_list.append(chr[0])
-    #     #区域划分基因组，存储到task_list中
-    #     interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
-    #     for i in range(0,interval+1):
-    #         if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
-    #             task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
-    #         else:
-    #             task_list.append([chr[0],i*batch,(i+1)*batch])
+    for chr in normal_sam_file.get_index_statistics():
+        ref_name_list.append(chr[0])
+        #区域划分基因组，存储到task_list中
+        interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
+        for i in range(0,interval+1):
+            if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
+                task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
+            else:
+                task_list.append([chr[0],i*batch,(i+1)*batch])
     
     
-    # analysis_pools = Pool(processes=24)
-    # os.mkdir("%ssignatures"%"./")
-    # for task in task_list:
-    #     para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
-    #         chase_ins_max_size, combine_min_size)]
-    #     analysis_pools.map_async(multi_run_wrapper, para)
-    # analysis_pools.close()
-    # analysis_pools.join()
+    analysis_pools = Pool(processes=24)
+    os.mkdir("%ssignatures"%"./")
+    for task in task_list:
+        para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
+            chase_ins_max_size, combine_min_size)]
+        analysis_pools.map_async(multi_run_wrapper, para)
+    analysis_pools.close()
+    analysis_pools.join()
 
-    # print("Rebuilding signatures of structural variants.")
-    # analysis_pools = Pool(processes=24)
-    # cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    # cmd_ins = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    # for i in [cmd_ins]:
-    #     analysis_pools.map_async(os.system, (i,))
-    # analysis_pools.close()
-    # analysis_pools.join()
+    print("Rebuilding signatures of structural variants.")
+    analysis_pools = Pool(processes=24)
+    cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    cmd_ins = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    for i in [cmd_ins]:
+        analysis_pools.map_async(os.system, (i,))
+    analysis_pools.close()
+    analysis_pools.join()
     
     result_sv = list()
     
