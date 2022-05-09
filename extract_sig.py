@@ -349,16 +349,22 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     value_sv = load_sigs_chr('./',tumor_or_normal)
     # print(value_sv)
     analysis_pools = Pool(processes=24)
-    # print(value_sv)
+    # print(value_sv['DEL'])
     # for chr in value_sv['INS']:
     #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
     #         lenth_ratio, threshold_gloab, detailed_length_ratio)]
     #     result_sv.append(analysis_pools.map_async(run_ins,para))
     #     print("Finish %s:%s"%(chr,'INS'))
     for chr in value_sv['DEL']:
-        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'),chr)]
+        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'),chr,min_support,lenth_ratio)]
+        # print(lenth_ratio)
         result_sv.append(analysis_pools.map_async(run_del,para))
         print("Finish %s:%s"%(chr,'DEL'))
+    
+    # para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'),'chr1',min_support,lenth_ratio)]
+    # # print(lenth_ratio)
+    # result_sv.append(analysis_pools.map_async(run_del,para))
+    # print("Finish %s:%s"%('chr1','DEL'))
         
     analysis_pools.close()
     analysis_pools.join()

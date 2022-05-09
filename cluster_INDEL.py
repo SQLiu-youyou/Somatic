@@ -1,3 +1,4 @@
+from typing import final
 import numpy as np
 from genotype import cal_CIPOS
 
@@ -28,8 +29,12 @@ def generate_final_del(cluster_list,candidate_single_SV,chr):
         GL = '.,.,.'
         GQ = "."
         QUAL = "."
+        # if cluster_list[0][0] == 2585091:
+        #     print("yes")
+        #     print(str(int(del_start)), str(int(del_len)), str(len(cluster_list)))
         candidate_single_SV.append([chr, "DEL", str(int(del_start)), str(int(del_len)), str(len(cluster_list)), \
             str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
+        
 
 def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio, threshold_gloab,\
     detailed_length_ratio):
@@ -101,10 +106,11 @@ def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min
         else:
             generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
 
-def cluster_through_len_del(cluster_list,chr,candidate_single_SV):
-    threshold_gloab = 0.5
-    min_support = 14
-    # detailed_length_ratio = 0.8
+def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, length_ratio):
+    # print("in")
+    threshold_gloab = 0.2
+    # min_support = 14
+    detailed_length_ratio = 0.8
     
     
     '''
@@ -140,13 +146,16 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV):
     # 按ins_len聚类是，允许的len差值的最大值
     DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * np.mean(global_len)
     
-    # for ele in cluster_list:
-    #     if ele[0]>= 110393325 and ele[0] <= 110393334:
-    #         print(SortedList)
-    #         print(len(SortedList))
-    #         print(DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP)
+    
     to_SV_list = list()
     to_SV_list.append(SortedList[0])
+    # for ele in SortedList:
+    #     if ele[0]>= 2583903 and ele[0] <= 2590428:
+    #         print(SortedList)
+    #         print(len(SortedList))
+    #         print(len(SortedList))
+    #         print(DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP)
+
     for ele in SortedList[1:]:
         #根据len判断，是一个cluster里的，放进list里
         if ele[1] - standard_len < DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP:
@@ -154,28 +163,30 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV):
             standard_len = ele[1]
         #不是一个堆了，判断当前是否足以支持一个变异，并重新申请cluster_list
         else:
-            if len(to_SV_list) > 0.9 * min_support:
-                # if ele[0] == 129771776:
+            if len(to_SV_list) > min_support:
+                # if to_SV_list[-1][0] == 2588850:
+                #     print("to_sv_list")
                 #     print(to_SV_list)
-                # if lenth_ratio:
-                #     if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
-                #         generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
-                # else:
-                #     generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+                if length_ratio:
+                    if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+                        generate_final_del(to_SV_list,candidate_single_SV,chr)
+                else:
+                    generate_final_del(to_SV_list,candidate_single_SV,chr)
                 # print(to_SV_list)
-                generate_final_del(to_SV_list,candidate_single_SV,chr)
+                # generate_final_del(to_SV_list,candidate_single_SV,chr)
             to_SV_list = list()
             standard_len = ele[1]
             to_SV_list.append(ele)
     #对最后一个堆的判定
-    if len(to_SV_list) > 0.9 * min_support:
-        # if lenth_ratio:
-        #     if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
-        #         generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
-        # else:
-        #     generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+    if len(to_SV_list) > min_support:
+        if length_ratio:
+            if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+                generate_final_del(to_SV_list,candidate_single_SV,chr)
+        else:
+            generate_final_del(to_SV_list,candidate_single_SV,chr)
         # print(to_SV_list)
-        generate_final_del(to_SV_list,candidate_single_SV,chr)
+        # generate_final_del(to_SV_list,candidate_single_SV,chr)
+
 def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size, lenth_ratio, threshold_gloab, detailed_length_ratio):
     #首先按照起始位点坐标，sigs聚成一类
     '''
@@ -223,9 +234,9 @@ def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size, lenth_ra
     file.close()
     return candidate_single_SV
 
-def resolution_DEL(sigs_path,chr):
+def resolution_DEL(sigs_path,chr,min_support,length_ratio):
     max_cluster_bias = 200
-    min_support = 14
+    # min_support = 14
     # print("ok")
     #首先按照起始位点坐标，sigs聚成一类
     '''
@@ -256,11 +267,16 @@ def resolution_DEL(sigs_path,chr):
         #否则 判断cluster中的条数，是否大于-s
         else:
             if len(cluster_list) >= min_support:
-                # if ins_pos == 2584331:
+                # if ins_pos == 2590630:
                 #     print(cluster_list)
                 #     print(len(cluster_list))
                 # print(cluster_list)
-                cluster_through_len_del(cluster_list,chr,candidate_single_SV)
+                # if cluster_list[0][0] == 2583903:
+                #     print(cluster_list)
+                #     print(len(cluster_list))
+                # print(cluster_list)
+                cluster_through_len_del(cluster_list,chr,candidate_single_SV,min_support,\
+                    length_ratio)
             #无论继续处理与否，都需要将当前sig放入新一轮的处理中
             cluster_list = list()
             cluster_list.append([ins_pos, ins_len, read_id])
@@ -268,7 +284,8 @@ def resolution_DEL(sigs_path,chr):
     #对最后一个cluster的处理
     if len(cluster_list) >= min_support:
         # print(cluster_list)
-        cluster_through_len_del(cluster_list,chr,candidate_single_SV)
+        cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support,\
+            length_ratio)
     file.close()
     return candidate_single_SV
 
@@ -281,4 +298,5 @@ def run_ins(args):
    return resolution_INS(*args)
 
 def run_del(args):
+    # print("in")
     return resolution_DEL(*args)
