@@ -1,3 +1,4 @@
+from re import T
 import sys
 
 
@@ -12,11 +13,40 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
     while left <= right:
         mid = (left + right + 1) >> 1
         if int(breakpoint) >= (int(normal_sv_list[mid][0]) - bias) and int(breakpoint) <= (int(normal_sv_list[mid][0]) + bias):
-            if (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity or \
-                (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity:
+            # if int(breakpoint) == 16208164:
+            #     print("hree")
+            # # print("yes")
+            #     print(break_len)
+            #     print(normal_sv_list[mid][0])
+            #     print(int(normal_sv_list[mid][1])/int(break_len))
+            #     print(int(break_len)/int(normal_sv_list[mid][1]))
+            #     print(int(normal_sv_list[mid][0]) + bias)
+            if int(normal_sv_list[mid][1]) > int(break_len) and int(break_len)/int(normal_sv_list[mid][1]) > len_similarity:
+                # if int(breakpoint) == 16208164:
+                #     print("1")
                 return True
+            elif int(normal_sv_list[mid][1]) < int(break_len) and int(normal_sv_list[mid][1])/int(break_len) > len_similarity:
+                # print("2")
+                return True
+            elif int(normal_sv_list[mid][1]) == int(break_len):
+                return True
+            # if ((int(normal_sv_list[mid][1]) >= int(break_len) and (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity)) or \
+            #     ((int(normal_sv_list[mid][1]) < int(break_len) and (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity)):
+                # print(normal_sv_list[mid][1])
+                # print(int)
+                # print(int(normal_sv_list[mid][1])/int(break_len))
+                # print(int(break_len)/int(normal_sv_list[mid][1]))
+                # return True
+            
+            
+            # if (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity or \
+            #     (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity:
+            #     print(int(normal_sv_list[mid][1])/int(break_len))
+            #     # print("yes")
+            #     return True
               
-        if int(normal_sv_list[mid][0]) + bias < int(breakpoint):
+        
+        if int(normal_sv_list[mid][0]) < int(breakpoint):
             left = mid + 1
         else:
             right = mid - 1
@@ -69,6 +99,7 @@ if __name__=='__main__':
             if chr in normal_sv['DEL']:
                 del_start = line.strip().split('\t')[2]
                 del_len = line.strip().split('\t')[3]
+                # print(normal_sv['DEL'][chr],del_start, del_len)
                 if not query_sv_set(normal_sv['DEL'][chr], del_start, del_len):
                     if int(del_len) > 30 :
                         print(line.strip())

@@ -304,42 +304,42 @@ def multi_run_wrapper(args):
 def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor_or_normal,\
     lenth_ratio, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size, chase_ins_max_size,\
     combine_min_size, threshold_gloab, detailed_length_ratio):
-    # 使用pysam将read读进程序，并保存
-    normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
-    # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
-    chr_number = len(normal_sam_file.get_index_statistics())
-    #区块划分基因组
-    task_list = list()
-    ref_name_list = list()
+    # # 使用pysam将read读进程序，并保存
+    # normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
+    # # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
+    # chr_number = len(normal_sam_file.get_index_statistics())
+    # #区块划分基因组
+    # task_list = list()
+    # ref_name_list = list()
 
-    for chr in normal_sam_file.get_index_statistics():
-        ref_name_list.append(chr[0])
-        #区域划分基因组，存储到task_list中
-        interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
-        for i in range(0,interval+1):
-            if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
-                task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
-            else:
-                task_list.append([chr[0],i*batch,(i+1)*batch])
+    # for chr in normal_sam_file.get_index_statistics():
+    #     ref_name_list.append(chr[0])
+    #     #区域划分基因组，存储到task_list中
+    #     interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
+    #     for i in range(0,interval+1):
+    #         if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
+    #             task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
+    #         else:
+    #             task_list.append([chr[0],i*batch,(i+1)*batch])
     
     
-    analysis_pools = Pool(processes=24)
-    os.mkdir("%ssignatures"%"./")
-    for task in task_list:
-        para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
-            chase_ins_max_size, combine_min_size)]
-        analysis_pools.map_async(multi_run_wrapper, para)
-    analysis_pools.close()
-    analysis_pools.join()
+    # analysis_pools = Pool(processes=24)
+    # os.mkdir("%ssignatures"%"./")
+    # for task in task_list:
+    #     para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
+    #         chase_ins_max_size, combine_min_size)]
+    #     analysis_pools.map_async(multi_run_wrapper, para)
+    # analysis_pools.close()
+    # analysis_pools.join()
 
-    print("Rebuilding signatures of structural variants.")
-    analysis_pools = Pool(processes=24)
-    cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    cmd_ins = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    for i in [cmd_ins]:
-        analysis_pools.map_async(os.system, (i,))
-    analysis_pools.close()
-    analysis_pools.join()
+    # print("Rebuilding signatures of structural variants.")
+    # analysis_pools = Pool(processes=24)
+    # cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    # cmd_ins = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    # for i in [cmd_ins]:
+    #     analysis_pools.map_async(os.system, (i,))
+    # analysis_pools.close()
+    # analysis_pools.join()
     
     result_sv = list()
     
