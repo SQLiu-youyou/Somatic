@@ -1,4 +1,3 @@
-from re import T
 import sys
 
 
@@ -23,10 +22,10 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
             #     print(int(normal_sv_list[mid][0]) + bias)
             if int(normal_sv_list[mid][1]) > int(break_len) and int(break_len)/int(normal_sv_list[mid][1]) > len_similarity:
                 # if int(breakpoint) == 16208164:
-                print("1")
+                # print("1")
                 return True
             elif int(normal_sv_list[mid][1]) < int(break_len) and int(normal_sv_list[mid][1])/int(break_len) > len_similarity:
-                print("2")
+                # print("2")
                 return True
             elif int(normal_sv_list[mid][1]) == int(break_len):
                 return True

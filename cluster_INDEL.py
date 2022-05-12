@@ -1,6 +1,6 @@
 from typing import final
 import numpy as np
-from genotype import cal_CIPOS
+from genotype import *
 
 def generate_final_ins(cluster_list,candidate_single_SV,chr,min_size):
     # max_support = 500
@@ -338,3 +338,35 @@ def run_ins(args):
 def run_del(args):
     # print("in")
     return resolution_DEL(*args)
+
+def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, gt_round):
+	querydata = set()
+	search_start = max(int(search_threshold) - max_cluster_bias, 0)
+	search_end = int(search_threshold) + max_cluster_bias
+
+	up_bound = threshold_ref_count(len(read_id_list))
+
+	status = count_coverage(chr, 
+							search_start, 
+							search_end, 
+							reads_list, 
+							querydata, 
+							up_bound, 
+							gt_round)
+
+	if status == -1:
+		DR = '.'
+		GT = "./."
+		GL = ".,.,."
+		GQ = "."
+		QUAL = "."
+
+	# elif status == 1:
+	# 	pass
+	else:
+		DR = 0
+		for query in querydata:
+			if query not in read_id_list:
+				DR += 1
+		GT, GL, GQ, QUAL = cal_GL(DR, len(read_id_list))
+	return len(read_id_list), DR, GT, GL, GQ, QUAL
