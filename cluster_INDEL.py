@@ -108,7 +108,7 @@ def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min
 
 def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, length_ratio):
     # print("in")
-    threshold_gloab = 0.5
+    threshold_gloab = 0.3
     # min_support = 14
     detailed_length_ratio = 0.8
     
@@ -142,50 +142,88 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, l
     SortedList = sorted(list(reserved_read.values()), key = lambda x:x[1])
     # print(SortedList)
     standard_len = SortedList[0][1]
-    global_len = [i[1] for i in SortedList]
+    # global_len = [i[1] for i in SortedList]
     # 按ins_len聚类是，允许的len差值的最大值
-    DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * np.mean(global_len)
-    
+    # DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * np.mean(global_len)
+    DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * standard_len
     
     to_SV_list = list()
     to_SV_list.append(SortedList[0])
-    for ele in cluster_list:
-        if ele[0]>= 62238558 and ele[0] <= 62239128:
-            print(SortedList)
-            print(len(SortedList))
-            print(len(SortedList))
-            print(DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP)
+    # for ele in cluster_list:
+    #     if ele[0]>= 33219533 and ele[0] <= 33219589:
+    #         print(SortedList)
+    #         print(len(SortedList))
+    #         print(len(SortedList))
+    #         print(DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP)
 
     for ele in SortedList[1:]:
         #根据len判断，是一个cluster里的，放进list里
         if ele[1] - standard_len < DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP:
             to_SV_list.append(ele)
             standard_len = ele[1]
+            DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = np.mean([i[1] for i in to_SV_list]) * threshold_gloab
         #不是一个堆了，判断当前是否足以支持一个变异，并重新申请cluster_list
         else:
             if len(to_SV_list) >= min_support:
-                # if to_SV_list[0][0] == 1702496:
+                # if to_SV_list[0][0] == 33219555:
                 #     print("to_sv_list")
                 #     print(to_SV_list)
-                if length_ratio:
-                    if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
-                        generate_final_del(to_SV_list,candidate_single_SV,chr)
-                else:
-                    generate_final_del(to_SV_list,candidate_single_SV,chr)
+                # if length_ratio:
+                #     if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+                #         generate_final_del(to_SV_list,candidate_single_SV,chr)
+                # else:
+                generate_final_del(to_SV_list,candidate_single_SV,chr)
                 # print(to_SV_list)
                 # generate_final_del(to_SV_list,candidate_single_SV,chr)
             to_SV_list = list()
             standard_len = ele[1]
+            DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * standard_len
             to_SV_list.append(ele)
     #对最后一个堆的判定
     if len(to_SV_list) >= min_support:
-        if length_ratio:
-            if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
-                generate_final_del(to_SV_list,candidate_single_SV,chr)
-        else:
-            generate_final_del(to_SV_list,candidate_single_SV,chr)
+        # if length_ratio:
+        #     if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+        #         generate_final_del(to_SV_list,candidate_single_SV,chr)
+        # else:
+        #     generate_final_del(to_SV_list,candidate_single_SV,chr)
+        # if to_SV_list[0][0] == 33219555:
+        #     print("to_sv_list")
+        #     print(to_SV_list)
+        generate_final_del(to_SV_list,candidate_single_SV,chr)
         # print(to_SV_list)
         # generate_final_del(to_SV_list,candidate_single_SV,chr)
+    
+    
+    # for ele in SortedList[1:]:
+    #     #根据len判断，是一个cluster里的，放进list里
+    #     if ele[1] - standard_len < DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP:
+    #         to_SV_list.append(ele)
+    #         standard_len = ele[1]
+    #     #不是一个堆了，判断当前是否足以支持一个变异，并重新申请cluster_list
+    #     else:
+    #         if len(to_SV_list) >= min_support:
+    #             # if to_SV_list[0][0] == 1702496:
+    #             #     print("to_sv_list")
+    #             #     print(to_SV_list)
+    #             if length_ratio:
+    #                 if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+    #                     generate_final_del(to_SV_list,candidate_single_SV,chr)
+    #             else:
+    #                 generate_final_del(to_SV_list,candidate_single_SV,chr)
+    #             # print(to_SV_list)
+    #             # generate_final_del(to_SV_list,candidate_single_SV,chr)
+    #         to_SV_list = list()
+    #         standard_len = ele[1]
+    #         to_SV_list.append(ele)
+    # #对最后一个堆的判定
+    # if len(to_SV_list) >= min_support:
+    #     if length_ratio:
+    #         if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+    #             generate_final_del(to_SV_list,candidate_single_SV,chr)
+    #     else:
+    #         generate_final_del(to_SV_list,candidate_single_SV,chr)
+    #     # print(to_SV_list)
+    #     # generate_final_del(to_SV_list,candidate_single_SV,chr)
 
 def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size, lenth_ratio, threshold_gloab, detailed_length_ratio):
     #首先按照起始位点坐标，sigs聚成一类

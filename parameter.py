@@ -49,11 +49,11 @@ def parseArgs(argv):
     GroupSVCluster = parser.add_argument_group('Generation of SV clusters')
     GroupSVCluster.add_argument('-ns', '--normal_min_support', 
         help = "Minimum number of reads that support a SV to be reported.[%(default)s]", 
-        default = 3, 
+        default = 2, 
         type = int)
     GroupSVCluster.add_argument('-ts', '--tumor_min_support', 
         help = "Minimum number of reads that support a SV to be reported.[%(default)s]", 
-        default = 10, 
+        default = 1, 
         type = int)
     GroupSVCluster.add_argument('-nl', '--normal_min_size', 
         help = "Minimum size of SV to be reported.[%(default)s]", 

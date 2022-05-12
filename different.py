@@ -15,18 +15,18 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
         if int(breakpoint) >= (int(normal_sv_list[mid][0]) - bias) and int(breakpoint) <= (int(normal_sv_list[mid][0]) + bias):
             # if int(breakpoint) == 16208164:
             #     print("hree")
-            # # print("yes")
+            # print("yes")
             #     print(break_len)
             #     print(normal_sv_list[mid][0])
-            #     print(int(normal_sv_list[mid][1])/int(break_len))
-            #     print(int(break_len)/int(normal_sv_list[mid][1]))
+            # print(int(normal_sv_list[mid][1])/int(break_len))
+            # print(int(break_len)/int(normal_sv_list[mid][1]))
             #     print(int(normal_sv_list[mid][0]) + bias)
             if int(normal_sv_list[mid][1]) > int(break_len) and int(break_len)/int(normal_sv_list[mid][1]) > len_similarity:
                 # if int(breakpoint) == 16208164:
-                #     print("1")
+                print("1")
                 return True
             elif int(normal_sv_list[mid][1]) < int(break_len) and int(normal_sv_list[mid][1])/int(break_len) > len_similarity:
-                # print("2")
+                print("2")
                 return True
             elif int(normal_sv_list[mid][1]) == int(break_len):
                 return True
@@ -41,7 +41,7 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
             
             # if (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity or \
             #     (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity:
-            #     print(int(normal_sv_list[mid][1])/int(break_len))
+            #     # print(int(normal_sv_list[mid][1])/int(break_len))
             #     # print("yes")
             #     return True
               

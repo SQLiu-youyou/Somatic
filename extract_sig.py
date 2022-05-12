@@ -314,12 +314,12 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
 
     # for chr in normal_sam_file.get_index_statistics():
     #     ref_name_list.append(chr[0])
-    #     #区域划分基因组，存储到task_list中
+    #     #区域划分基因组，存储到task_list中e
     #     interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
     #     for i in range(0,interval+1):
     #         if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
     #             task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
-    #         else:
+    #         else:e
     #             task_list.append([chr[0],i*batch,(i+1)*batch])
     
     
