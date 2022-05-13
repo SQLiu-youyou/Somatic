@@ -7,47 +7,31 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
     
     left = 0
     right = len(normal_sv_list) - 1
-    # print(len(normal_sv_list))
     mid = 0
     while left <= right:
         mid = (left + right + 1) >> 1
-        if int(breakpoint) >= (int(normal_sv_list[mid][0]) - bias) and int(breakpoint) <= (int(normal_sv_list[mid][0]) + bias):
-            # if int(breakpoint) == 16208164:
-            #     print("hree")
-            # print("yes")
-            #     print(break_len)
-            #     print(normal_sv_list[mid][0])
-            # print(int(normal_sv_list[mid][1])/int(break_len))
-            # print(int(break_len)/int(normal_sv_list[mid][1]))
-            #     print(int(normal_sv_list[mid][0]) + bias)
-            if int(normal_sv_list[mid][1]) > int(break_len) and int(break_len)/int(normal_sv_list[mid][1]) > len_similarity:
-                # if int(breakpoint) == 16208164:
-                # print("1")
-                return True
-            elif int(normal_sv_list[mid][1]) < int(break_len) and int(normal_sv_list[mid][1])/int(break_len) > len_similarity:
-                # print("2")
-                return True
-            elif int(normal_sv_list[mid][1]) == int(break_len):
-                return True
-            # if ((int(normal_sv_list[mid][1]) >= int(break_len) and (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity)) or \
-            #     ((int(normal_sv_list[mid][1]) < int(break_len) and (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity)):
-                # print(normal_sv_list[mid][1])
-                # print(int)
-                # print(int(normal_sv_list[mid][1])/int(break_len))
-                # print(int(break_len)/int(normal_sv_list[mid][1]))
-                # return True
+        if int(breakpoint) >= (int(normal_sv_list[mid][0]) - bias) and \
+            int(breakpoint) <= (int(normal_sv_list[mid][0]) + bias):
             
-            
-            # if (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity or \
-            #     (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity:
-            #     # print(int(normal_sv_list[mid][1])/int(break_len))
-            #     # print("yes")
-            #     return True
+            if  1 >= (int(normal_sv_list[mid][1])/int(break_len)) > len_similarity or \
+                1 >= (int(break_len)/int(normal_sv_list[mid][1])) > len_similarity:
+                return True
               
         
         if int(normal_sv_list[mid][0]) < int(breakpoint):
+            if mid > 0 and int(breakpoint) >= (int(normal_sv_list[mid-1][0]) - bias) and \
+                int(breakpoint) <= (int(normal_sv_list[mid-1][0]) + bias):
+                if  1 >= (int(normal_sv_list[mid-1][1])/int(break_len)) > len_similarity or \
+                1 >= (int(break_len)/int(normal_sv_list[mid-1][1])) > len_similarity:
+                    return True
             left = mid + 1
+            
         else:
+            if mid < len(normal_sv_list)-1 and int(breakpoint) >= (int(normal_sv_list[mid+1][0]) - bias) \
+                and int(breakpoint) <= (int(normal_sv_list[mid+1][0]) + bias):
+                    if  1 >= (int(normal_sv_list[mid+1][1])/int(break_len)) > len_similarity or \
+                    1 >= (int(break_len)/int(normal_sv_list[mid+1][1])) > len_similarity:
+                        return True
             right = mid - 1
     return False
 

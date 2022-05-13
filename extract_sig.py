@@ -339,6 +339,7 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     for task in task_list:
         para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
             chase_ins_max_size, combine_min_size)]
+        # 使用多进程保存read_list
         if task[0] not in reads_dict_pool:
             reads_dict_pool[task[0]] = list()
         reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
@@ -346,6 +347,8 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     analysis_pools.close()
     analysis_pools.join()
     reads_info_dict = dict()
+    
+    # 把进程里的所有candidate放到最终处理的列表中
     for chr in reads_dict_pool:
         reads_info_dict[chr] = list()
         for item in reads_dict_pool[chr]:
@@ -353,8 +356,8 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
                 reads_info_dict[chr].extend(item.get()[0])
             except:
                 pass
-    for chr in reads_info_dict:
-        print(chr + '\t' + str(len(reads_info_dict[chr])))
+    # for chr in reads_info_dict:
+    #     print(chr + '\t' + str(len(reads_info_dict[chr])))
 
     print("Rebuilding signatures of structural variants.")
     analysis_pools = Pool(processes=24)
@@ -380,8 +383,8 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     #     result_sv.append(analysis_pools.map_async(run_ins,para))
     #     print("Finish %s:%s"%(chr,'INS'))
     for chr in value_sv['DEL']:
-        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'),chr,min_support,lenth_ratio)]
-        # print(lenth_ratio)
+        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'), chr, min_support,lenth_ratio, reads_info_dict[chr])]
+        # print(reads_info_dict[chr])
         result_sv.append(analysis_pools.map_async(run_del,para))
         print("Finish %s:%s"%(chr,'DEL'))
     
