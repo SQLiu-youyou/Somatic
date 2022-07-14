@@ -26,6 +26,7 @@ def parseArgs(argv):
         type = int)
     GroupSignaturesCollect.add_argument('-q', '--min_mapq', 
         help = "Minimum mapping quality value of alignment to be taken into account.[%(default)s]", 
+        #clr 20 ont 10
         default = 20, 
         type = int)
     GroupSignaturesCollect.add_argument('-sm', '--sig_min_cigar_size', 
@@ -38,11 +39,12 @@ def parseArgs(argv):
         type = int)
     GroupSignaturesCollect.add_argument('-cmax', '--chase_ins_max_size', 
         help = "max size of combine ins intra read.[%(default)s]", 
-        default = 100000, 
+        default = 3000000, 
         type = int)
     GroupSignaturesCollect.add_argument('-cm', '--combine_min_size', 
         help = "min size of combine ins in same read.[%(default)s]", 
-        default = 200, 
+        #clr:200 ont:100
+        default = 100, 
         type = int)
 
 

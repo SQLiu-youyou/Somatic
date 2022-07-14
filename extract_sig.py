@@ -1,9 +1,11 @@
 from cgi import print_environ
+from telnetlib import WILL
+from turtle import pos
 from description import load_sigs_chr
 from cluster_INDEL import run_ins,resolution_INS,run_del
 import statistics
 import sys
-from numpy import append, min_scalar_type, promote_types
+from numpy import append, min_scalar_type, piecewise, promote_types
 import pysam
 import cigar
 from python_utils import listify
@@ -26,52 +28,89 @@ def generate_candidate_in_a_read(chr_name,sig_list,candidate,read_name, combine_
     elif len(sig_list) == 1:
         if chr_name not in candidate[svtype]:
             candidate[svtype][chr_name] = list()
-        #后续还需添加序列信息，目前存储：变异位点，变异长度，read_name
+        #后续还需添加序列信息，目前存储：变异位点，变异长度，read_name,read来源
         if svtype == 'INS':
-            candidate['INS'][chr_name].append([sig_list[0][0],sig_list[0][1],read_name])
+            candidate['INS'][chr_name].append([sig_list[0][0],sig_list[0][1],read_name,sig_list[0][2]])
         if svtype == 'DEL':
-            candidate['DEL'][chr_name].append([sig_list[0][0],sig_list[0][1],read_name])
+            candidate['DEL'][chr_name].append([sig_list[0][0],sig_list[0][1],read_name,sig_list[0][2]])
     else:
-        #用第一列保存ins开始的位置，第二列保存INS的长度，用第三列待比较的ins位点
+        #用第一列保存ins开始的位置，第二列保存INS的长度，用最后一列待比较的ins位点
         if svtype == 'INS':
             temp_sig = sig_list[0]
             temp_sig += [sig_list[0][0]]
             for sig in sig_list[1:]:
                 # temp_sig[2] = sig[0]
-                if sig[0] - temp_sig[2] <= combine_min_size:
-                    temp_sig[1] = temp_sig[1] + sig[1] 
-                    temp_sig[2] = sig[0]
+                if (sig[1] + temp_sig[1])/2 > combine_min_size:
+                    if sig[0] - temp_sig[-1] <= combine_min_size:
+                        temp_sig[1] = temp_sig[1] + sig[1] 
+                        temp_sig[-1] = sig[0]
+                    else:
+                        if chr_name not in candidate['INS']:
+                            candidate['INS'][chr_name] = list()
+                        candidate['INS'][chr_name].append([temp_sig[0],temp_sig[1],read_name,temp_sig[2]])
+                        temp_sig = sig
+                        temp_sig.append(sig[0])
                 else:
-                    if chr_name not in candidate['INS']:
-                        candidate['INS'][chr_name] = list()
-                    candidate['INS'][chr_name].append([temp_sig[0],temp_sig[1],read_name])
-                    temp_sig = sig
-                    temp_sig.append(sig[0])
+                    if sig[0] - temp_sig[-1] <= (sig[1] + temp_sig[1])/2:
+                        temp_sig[1] = temp_sig[1] + sig[1] 
+                        temp_sig[-1] = sig[0]
+                    else:
+                        if chr_name not in candidate['INS']:
+                            candidate['INS'][chr_name] = list()
+                        candidate['INS'][chr_name].append([temp_sig[0],temp_sig[1],read_name,temp_sig[2]])
+                        temp_sig = sig
+                        temp_sig.append(sig[0])
+            
             #处理最后一个merge的ins
             if chr_name not in candidate['INS']:
                     candidate['INS'][chr_name] = list()
-            candidate['INS'][chr_name].append([temp_sig[0],temp_sig[1],read_name])
+            candidate['INS'][chr_name].append([temp_sig[0],temp_sig[1],read_name,temp_sig[2]])
         else:
-            #第一列保存del开始的位置，第二列保存del的长度，第三列使用del开始+del长度的和作为待比较的位点
+            #第一列保存del开始的位置，第二列保存del的长度，最后一列使用del开始+del长度的和作为待比较的位点
             temp_sig = sig_list[0]
             temp_sig += [sum(sig_list[0])]
             for sig in sig_list[1:]:
-                # temp_sig[2] = sig[0]
-                if sig[0] - temp_sig[2] <= combine_min_size:
-                    temp_sig[1] = temp_sig[1] + sig[1] 
-                    temp_sig[2] = sum(sig)
+                
+                if (sig[1] + temp_sig[1])/2 > combine_min_size:
+                    if sig[0] - temp_sig[-1] <= combine_min_size:
+                        temp_sig[1] = temp_sig[1] + sig[1] 
+                        temp_sig[-1] = sum(sig)
+                    else:
+                        if chr_name not in candidate['DEL']:
+                            candidate['DEL'][chr_name] = list()
+                        candidate['DEL'][chr_name].append([temp_sig[0],temp_sig[1],read_name,temp_sig[2]])
+                        temp_sig = sig
+                        # temp_sig.append(sig[0])
+                        temp_sig.append(sum(sig))
                 else:
-                    if chr_name not in candidate['DEL']:
-                        candidate['DEL'][chr_name] = list()
-                    candidate['DEL'][chr_name].append([temp_sig[0],temp_sig[1],read_name])
-                    temp_sig = sig
-                    # temp_sig.append(sig[0])
-                    temp_sig.append(sum(sig))
+                    if sig[0] - temp_sig[-1] <= (sig[1] + temp_sig[1])/2:
+                        temp_sig[1] = temp_sig[1] + sig[1] 
+                        temp_sig[-1] = sum(sig)
+                    else:
+                        if chr_name not in candidate['DEL']:
+                            candidate['DEL'][chr_name] = list()
+                        candidate['DEL'][chr_name].append([temp_sig[0],temp_sig[1],read_name,temp_sig[2]])
+                        temp_sig = sig
+                        # temp_sig.append(sig[0])
+                        temp_sig.append(sum(sig))           
+                
+                
+                # temp_sig[2] = sig[0]
+                #注释开始，上一句不是
+                # if sig[0] - temp_sig[2] <= combine_min_size:
+                #     temp_sig[1] = temp_sig[1] + sig[1] 
+                #     temp_sig[2] = sum(sig)
+                # else:
+                #     if chr_name not in candidate['DEL']:
+                #         candidate['DEL'][chr_name] = list()
+                #     candidate['DEL'][chr_name].append([temp_sig[0],temp_sig[1],read_name])
+                #     temp_sig = sig
+                #     temp_sig.append(sum(sig))
                     # print(temp_sig)
             #处理最后一个merge的ins
             if chr_name not in candidate['DEL']:
                     candidate['DEL'][chr_name] = list()
-            candidate['DEL'][chr_name].append([temp_sig[0],temp_sig[1],read_name])
+            candidate['DEL'][chr_name].append([temp_sig[0],temp_sig[1],read_name,temp_sig[2]])
             # print(candidate)
 
 signal = {1 << 2: 0, \
@@ -97,11 +136,12 @@ def generate_candidate_intra_read(split_read,read_length,read_name,candidate,cha
     # chase_ins_min_size = 20 
     # chase_ins_max_size = 100000
     chase_del_min_size = 20
-    chase_del_max_size = 500000
+    chase_del_max_size = 3000000
     '''
 	read_start	read_end	ref_start	ref_end     chr	    strand
 	#0			#1			#2			#3		    #4	    #5
 	'''
+    primary = split_read[0]
     sp_list = sorted(split_read,key = lambda x:x[0])
     # print(len(sp_list)-1)
     # print(len(sp_list[:-1]))
@@ -122,16 +162,25 @@ def generate_candidate_intra_read(split_read,read_length,read_name,candidate,cha
                             (ele2[0] - ele1[1] - (ele2[2] - ele1[3]) <= chase_ins_max_size or chase_ins_max_size == -1):
                         if ele1[4] not in candidate['INS']:
                             candidate['INS'][ele1[4]] = list()
-                        candidate['INS'][ele1[4]].append([(ele1[1]+ele2[3])/2, \
-                            ele2[0] - ele1[1] - (ele2[2] - ele1[3]),read_name])
+                        if ele1 == primary or ele2 == primary:
+                            candidate['INS'][ele1[4]].append([(ele1[1]+ele2[3])/2, \
+                            ele2[0] - ele1[1] - (ele2[2] - ele1[3]),read_name,1])
+                        else:
+                            candidate['INS'][ele1[4]].append([(ele1[1]+ele2[3])/2, \
+                            ele2[0] - ele1[1] - (ele2[2] - ele1[3]),read_name,0])
                 #DEL
                 if ele2[2] - ele1[3] - (ele2[0] - ele1[1]) >= chase_del_min_size:
                     if ele2[0] - ele1[1] <= 100 and \
                             (ele2[2] - ele1[3] - (ele2[0] - ele1[1]) <= chase_del_max_size or chase_ins_max_size == -1):
                         if ele1[4] not in candidate['DEL']:
                             candidate['DEL'][ele1[4]] = list()
-                        candidate['DEL'][ele1[4]].append([ele1[3],\
-                            ele2[2] - ele1[3] - (ele2[0] - ele1[1]), read_name])
+                        if ele1 == primary or ele2 == primary:
+                            candidate['DEL'][ele1[4]].append([ele1[3],\
+                            ele2[2] - ele1[3] - (ele2[0] - ele1[1]), read_name,1])
+                        else:
+                            candidate['DEL'][ele1[4]].append([ele1[3],\
+                            ele2[2] - ele1[3] - (ele2[0] - ele1[1]), read_name,0])
+
 
 def organize_supple_info(primary_info,supple_info,read_length,read_name,candidate,\
     max_split_parts, chase_ins_min_size, chase_ins_max_size):
@@ -211,18 +260,29 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
             if cigar_pair[0] == 2 and cigar_pair[1] < sig_min_cigar_size:
                 shift_del += cigar_pair[1]
             if cigar_pair[0] == 2 and cigar_pair[1] >= sig_min_cigar_size:
-                Combine_sig_in_same_read_del.append([read_align_start + shift_del, cigar_pair[1]])
-                # print(Combine_sig_in_same_read_del)
-                shift_del += cigar_pair[1]
+                if process_signal == 1 or process_signal == 2:
+                    Combine_sig_in_same_read_del.append([read_align_start + shift_del, cigar_pair[1],1])
+                    # print(Combine_sig_in_same_read_del)
+                    shift_del += cigar_pair[1]
+                else:
+                    Combine_sig_in_same_read_del.append([read_align_start + shift_del, cigar_pair[1],0])
+                    # print(Combine_sig_in_same_read_del)
+                    shift_del += cigar_pair[1]
+
 
                 
-            # #INS
+            #ins处理的时候，也需要加上read来源
+            #INS
             # if cigar_pair[0] in [0, 2, 7, 8]:
             #     shift_ins += cigar_pair[1]
             # if cigar_pair[0] == 1 and cigar_pair[1] >=  sig_min_cigar_size:
+            #     if process_signal == 1 or process_signal == 2:
             #     # print(Combine_sig_in_same_read_del)
-            #     Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1]])
+            #         Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1],1])
             #     # print(Combine_sig_in_same_read_ins)
+            #     else:
+            #         Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1],0])
+
         if read.cigar[-1][0] == 4:
             soft_right= read.cigar[-1][1]
         if read.cigar[-1][0] == 5:
@@ -240,6 +300,8 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
     #inter
     # generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_ins,candidate,read_name, combine_min_size, 'INS')
     
+    # if Combine_sig_in_same_read_del != []:
+    #     print(Combine_sig_in_same_read_del)
     generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_del,candidate,read_name, combine_min_size, 'DEL')
     '''
     INTRA
@@ -262,6 +324,7 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
         for tag in Tags:
             if tag[0] == 'SA':
                 supple_info = tag[1].split(';')[:-1]
+                # print(supple_info)
                 #intra
                 organize_supple_info(primary_info,supple_info,read.query_length,read_name,\
                 candidate, max_split_parts, chase_ins_min_size, chase_ins_max_size)
@@ -285,27 +348,35 @@ def single_pipe(sam_path,task, min_mapq, sig_min_cigar_size, max_split_parts, ch
         pos_start = read.reference_start # 0-based
         pos_end = read.reference_end
         reads_list.append([pos_start, pos_end, is_primary, read.query_name])
+
+            # print(read_coverage[int(pos_start/100000)])
     # if len(candidate['INS']) != 0 :
     #     print(candidate)
     samfile.close()
-    
+    # print(read_coverage)
+
     '''
     1.生成进程区间的bed文件
     2.将candidate中的信息存到bed文件中 [type,chr,ins_pos,ins_len,read_id]
     '''
     output = "signatures/_%s_%d_%d.bed"%(task[0], task[1], task[2])
+    reads_output = "signatures/_%s_%d_%d.reads.bed"%(task[0], task[1], task[2])
     file = open(output, 'w')
-    
+    reads_file = open(reads_output, 'w')
     #INS后续是4
+    for ele in reads_list:
+        reads_file.write("%s\t%d\t%d\t%d\t%s\n"%(task[0], ele[0], ele[1], ele[2], ele[3]))
+        # print(ele)
     for svtype in ['INS','DEL']:
         for chr in candidate[svtype]:
             for ele in candidate[svtype][chr]:
-                if len(ele) == 3:
-                    file.write("%s\t%s\t%d\t%d\t%s\n"%(svtype, chr, ele[0], ele[1], ele[2]))
+                if len(ele) == 4:
+                    file.write("%s\t%s\t%d\t%d\t%s\t%d\n"%(svtype, chr, ele[0], ele[1], ele[2], ele[3]))
                     
     file.close()
-    # print("Finished %s:%d-%d."%(task[0], task[1], task[2]))	
-    return reads_list
+    reads_file.close()
+    print("Finished %s:%d-%d."%(task[0], task[1], task[2]))	
+
 
 def multi_run_wrapper(args):
 	return single_pipe(*args)
@@ -320,8 +391,9 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     chr_number = len(normal_sam_file.get_index_statistics())
     #区块划分基因组
     task_list = list()
+    # read_coverage = dict()
     ref_name_list = list()
-    reads_dict_pool = dict() # reads_dict_pool["chr1"] = [start, end, is_primary, read_name]
+    reads_info_dict = dict() # reads_dict_pool["chr1"] = [start, end, is_primary, read_name]
 
     for chr in normal_sam_file.get_index_statistics():
         ref_name_list.append(chr[0])
@@ -333,65 +405,77 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
             else:
                 task_list.append([chr[0],i*batch,(i+1)*batch])
     
-    
     analysis_pools = Pool(processes=24)
     os.mkdir("%ssignatures"%"./")
     for task in task_list:
         para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
             chase_ins_max_size, combine_min_size)]
+        
         # 使用多进程保存read_list
-        if task[0] not in reads_dict_pool:
-            reads_dict_pool[task[0]] = list()
-        reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
-        # analysis_pools.map_async(multi_run_wrapper, para)
+        # if  not in reads_info_dict:
+        #     reads_info_dict[task[0]] = list()
+        # reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
+        
+        analysis_pools.map_async(multi_run_wrapper, para)
     analysis_pools.close()
     analysis_pools.join()
-    reads_info_dict = dict()
-    
+
+
+    # reads_info_dict = dict()
     # 把进程里的所有candidate放到最终处理的列表中
-    for chr in reads_dict_pool:
-        reads_info_dict[chr] = list()
-        for item in reads_dict_pool[chr]:
-            try:
-                reads_info_dict[chr].extend(item.get()[0])
-            except:
-                pass
+    # for chr in reads_dict_pool:
+    #     reads_info_dict[chr] = list()
+    #     for item in reads_dict_pool[chr]:
+    #         try:
+    #             reads_info_dict[chr].extend(item.get()[0])
+    #         except:
+    #             pass
     # for chr in reads_info_dict:
     #     print(chr + '\t' + str(len(reads_info_dict[chr])))
 
     print("Rebuilding signatures of structural variants.")
     analysis_pools = Pool(processes=24)
     cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    cmd_ins = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    for i in [cmd_ins]:
+    cmd_del = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    cmd_reads = ("cat %ssignatures/*.reads.bed > %s%sreads.sigs"%("./", "./", tumor_or_normal))
+    # for i in [cmd_ins,cmd_del]:
+    for i in [cmd_ins,cmd_del,cmd_reads]:
         analysis_pools.map_async(os.system, (i,))
     analysis_pools.close()
     analysis_pools.join()
     
     result_sv = list()
     
-    '''
-    聚类
-    '''
+    # '''
+    # 聚类
+    # '''
     value_sv = load_sigs_chr('./',tumor_or_normal)
-    # print(value_sv)
+
+    reads_info_dict = dict()
+    for chr in value_sv['DEL']:
+        reads_info_dict[chr] = list()
+    readsfile = open("%s%sreads.sigs"%("./", tumor_or_normal), 'r')
+    
+    for line in readsfile:
+        seq = line.strip().split('\t')
+        chr = seq[0]
+        if chr not in reads_info_dict:
+            reads_info_dict[chr] = list()
+        reads_info_dict[chr].append([int(seq[1]), int(seq[2]), int(seq[3]), seq[4]])
+    
+    readsfile.close()
+
     analysis_pools = Pool(processes=24)
-    # print(value_sv['DEL'])
-    # for chr in value_sv['INS']:
-    #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
-    #         lenth_ratio, threshold_gloab, detailed_length_ratio)]
-    #     result_sv.append(analysis_pools.map_async(run_ins,para))
-    #     print("Finish %s:%s"%(chr,'INS'))
+    # # for chr in value_sv['INS']:
+    # #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
+    # #         lenth_ratio, threshold_gloab, detailed_length_ratio)]
+    # #     result_sv.append(analysis_pools.map_async(run_ins,para))
+    # #     print("Finish %s:%s"%(chr,'INS'))
     for chr in value_sv['DEL']:
         para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'), chr, min_support,lenth_ratio, reads_info_dict[chr])]
-        # print(reads_info_dict[chr])
         result_sv.append(analysis_pools.map_async(run_del,para))
         print("Finish %s:%s"%(chr,'DEL'))
-    
-    # para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'),'chr1',min_support,lenth_ratio)]
-    # # print(lenth_ratio)
-    # result_sv.append(analysis_pools.map_async(run_del,para))
-    # print("Finish %s:%s"%('chr1','DEL'))
+
         
     analysis_pools.close()
     analysis_pools.join()
@@ -406,11 +490,7 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
             pass
     #按照染色体和位置排序
     semi_result = sorted(semi_result, key = lambda x:(x[0], int(x[2])))
-    # print("Loading reference genome...")
-    # ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[2], "fasta"))
     os.system("rm -r %ssignatures "%("./"))
-    #最终的INS信息，
-    # print(semi_result)
     return semi_result
 
 def main_ctrl(args, argv):
@@ -425,12 +505,14 @@ def main_ctrl(args, argv):
         args.normal_min_size, sys.argv[1], "normal", args.normal_length_ratio_flag, args.min_mapq, \
         args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
         args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+    
     file1 = open("normal_sv","w")
     for ele in normal_sv_list:
         for i in range(0,11):
             file1.write(str(ele[i])+'\t')
         file1.write(str(ele[11])+'\n')
     file1.close()
+    
 
     # batch = 10000000
     # max_cluster_bias_INS = 50
@@ -443,6 +525,13 @@ def main_ctrl(args, argv):
         args.tumor_min_size, sys.argv[2], "tumor", args.tumor_length_ratio_flag, args.min_mapq, \
         args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
         args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+
+    # file1 = open("normal_sv","w")
+    # for ele in normal_sv_list:
+    #     for i in range(0,11):
+    #         file1.write(str(ele[i])+'\t')
+    #     file1.write(str(ele[11])+'\n')
+    # file1.close()
 
     file2 = open("tumor_sv","w")
     for ele in tumor_sv_list:
