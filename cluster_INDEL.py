@@ -125,7 +125,8 @@ def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, g
     #                         gt_round, read_id_list, gt_primary)
 
     # GT = '1/1'
-    return GT
+    return DR, GT, GL, GQ, QUAL
+    # return GT
 # def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, gt_round):
 #     # print("in")
 #     GT = '1/1'
@@ -159,11 +160,11 @@ def generate_final_del(cluster_list,candidate_single_SV,chr, reads_info_dict):
         # print("yes")
         CIPOS = cal_CIPOS(np.std([i[0] for i in cluster_list]), len([i[0] for i in cluster_list]))
         CILEN = cal_CIPOS(np.std([i[1] for i in cluster_list]), len([i[1] for i in cluster_list]))
-        DR = '.'
+        # DR = '.'
         # GT = './.'
-        GL = '.,.,.'
-        GQ = "."
-        QUAL = "."
+        # GL = '.,.,.'
+        # GQ = "."
+        # QUAL = "."
         read_id_list = list()
         for ele in cluster_list:
             read_id_list.append(ele[2])
@@ -173,8 +174,9 @@ def generate_final_del(cluster_list,candidate_single_SV,chr, reads_info_dict):
             gt_primary = 1
         # if len(cluster_list) == 17:
         #     print(del_start)
-        GT = call_gt(reads_info_dict, del_start, chr, read_id_list, new_max_cluster_bias, gt_round, gt_primary)
-        
+        DR, GT, GL, GQ, QUAL = call_gt(reads_info_dict, del_start, chr, read_id_list, new_max_cluster_bias, gt_round, gt_primary)
+        # GT= call_gt(reads_info_dict, del_start, chr, read_id_list, new_max_cluster_bias, gt_round, gt_primary)
+
         candidate_single_SV.append([chr, "DEL", str(int(del_start)), str(int(del_len)), str(len(cluster_list)), \
             str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
         
@@ -259,7 +261,7 @@ def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min
             generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
 
 def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, length_ratio, \
-    reads_info_dict):
+    reads_info_dict,bam_path):
     # print("in")
     #clr:0.3 ont 0.1
     threshold_gloab = 0.1
@@ -349,7 +351,7 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, l
             
             DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * standard_len
             to_SV_list.append(ele)
-            # print(to_SV_list)
+            print(to_SV_list)
     #对最后一个堆的判定
     if len(to_SV_list) >= min_support:
         # if length_ratio:
@@ -361,7 +363,7 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, l
         #     print("to_sv_list")
         #     print(to_SV_list)
         # print("sv_list")
-        # print(to_SV_list)
+        print(to_SV_list)
         generate_final_del(to_SV_list,candidate_single_SV,chr, reads_info_dict)
         # generate_final_del(to_SV_list,candidate_single_SV,chr)
     
@@ -469,7 +471,7 @@ def resolution_DEL(sigs_path,chr,min_support,length_ratio, reads_info_dict,bam_p
         ins_len = int(seq[3])
         read_id = seq[4]
         sig_origin = int(seq[5])
-        # print(ins_pos,chr)
+        print(ins_pos,chr)
         #初始的第一个sig放进cluster中进行处理
         if len(cluster_list) == 0:
             cluster_list.append([ins_pos, ins_len, read_id, sig_origin])

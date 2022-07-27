@@ -15,6 +15,7 @@ import os
 import argparse
 import time
 import gc
+from Bio import SeqIO
 # from Bio import SeqIO
 
 
@@ -443,9 +444,9 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     #     analysis_pools.map_async(os.system, (i,))
     # analysis_pools.close()
     # analysis_pools.join()
-    
+
+
     result_sv = list()
-    
     # '''
     # 聚类
     # '''
@@ -480,6 +481,7 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     analysis_pools.close()
     analysis_pools.join()
      
+    # print("Writing to your output file.")
 
     #把进程里的所有candidate放到最终处理的列表中
     semi_result = list()
@@ -490,7 +492,11 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
             pass
     #按照染色体和位置排序
     semi_result = sorted(semi_result, key = lambda x:(x[0], int(x[2])))
+    # print(semi_result)
+    # print("Loading reference genome...")
+    # ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[3], "fasta"))
     os.system("rm -r %ssignatures "%("./"))
+    
     return semi_result
 
 def main_ctrl(args, argv):
