@@ -31,7 +31,14 @@ def rescale_read_counts(c0, c1, max_allowed_reads=100):
 
 def cal_GL(c0, c1):
     # Approximate adjustment of events with larger read depth
+    # x0 = 0
+    # x1 = 0
+    # if c0 ==115 and c1 ==38:
+    #     print("have this")
+    #     x0 = 115
+    #     x1 = 38
     c0, c1 = rescale_read_counts(c0, c1)
+
     # original genotype likelihood
     # ori_GL00 = np.float64(pow((1-err), c0)*pow(err, c1)*comb(c0+c1,c0)*(1-prior)/2)
     # ori_GL11 = np.float64(pow(err, c0)*pow((1-err), c1)*comb(c0+c1,c0)*(1-prior)/2)
@@ -40,15 +47,45 @@ def cal_GL(c0, c1):
     ori_GL00 = np.float64(pow((1-err), c0)*pow(err, c1)*(1-prior)/2)
     ori_GL11 = np.float64(pow(err, c0)*pow((1-err), c1)*(1-prior)/2)
     ori_GL01 = np.float64(pow(0.5, c0+c1)*prior)
+    # if x0 ==115 and x1 ==38:
+    #     print(ori_GL00)
+    #     print(ori_GL01)
+    #     print(ori_GL11)
 
     # normalized genotype likelihood
     prob = list(normalize_log10_probs([log10(ori_GL00), log10(ori_GL01), log10(ori_GL11)]))
+    # if x0 ==115 and x1 ==38:
+    #     print(prob)
     GL_P = [pow(10, i) for i in prob]
     PL = [int(np.around(-10*log10(i))) for i in GL_P]
     GQ = [int(-10*log10(GL_P[1] + GL_P[2])), int(-10*log10(GL_P[0] + GL_P[2])), int(-10*log10(GL_P[0] + GL_P[1]))]
     QUAL = abs(np.around(-10*log10(GL_P[0]), 1))
 
     return Genotype[prob.index(max(prob))], "%d,%d,%d"%(PL[0], PL[1], PL[2]), max(GQ), QUAL
+
+# def count_coverage(chr, s, e, f, read_count, up_bound, itround):
+# 	status = 0
+# 	iteration = 0
+# 	primary_num = 0
+# 	for i in f.fetch(chr, s, e):
+# 		iteration += 1
+# 		if i.flag not in [0,16]:
+# 			continue
+# 		primary_num += 1
+# 		if i.reference_start < s and i.reference_end > e:
+# 			read_count.add(i.query_name)
+# 			if len(read_count) >= up_bound:
+# 				status = 1
+# 				break
+# 		if iteration >= itround:
+# 			if float(primary_num/iteration) <= 0.2:
+# 				status = 1
+# 			else:
+# 				status = -1
+# 			break
+
+# 	return status
+
 
 def count_coverage(reads_list, search_start, search_end, up_bound, itround,\
     read_id_list, gt_primary):
@@ -83,31 +120,35 @@ def count_coverage(reads_list, search_start, search_end, up_bound, itround,\
     if status == 0 and len(read_count) == 0:
         read_count = iteration_set
 
-    # if search_start == 248554444:
+    # if search_start == 33758248:
     #     print(read_count)
     #     print(len(read_count))
     #     print("iteration=%d"%(iteration))
     #     print("primary_num=%d"%(primary_num))
 
-    # if search_start == 14961957:
-    #     print(status)
-    #     print(read_count)
-    #     print(len(read_count))
-    #     print(gt_primary)
+    if search_start == 33758248:
+        # print(status)
+        # print(read_count)
+        # print(len(read_count))
+        print(gt_primary)
     
     # if len(read_count)*100 < iteration:
     #     return status,iteration_set
 
     if gt_primary == 1:
-        # if search_start == 248554444:
+        # if search_start == 65346002:
         #     print(status)
         #     print(read_count)
         if len(read_count)*100 < iteration:
+
             return status,iteration_set
         else:
+            # if search_start == 33758248:
+            #     print(status)
+            #     print(read_count)
             return status,read_count
     else:
-        # if search_start == 248554444:
+        # if search_start == 14961957:
         #     print(status)
         #     print(len(iteration_set))
         return status,iteration_set
