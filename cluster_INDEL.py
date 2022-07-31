@@ -50,87 +50,87 @@ from genotype import *
 #     # return len(read_id_list), DR, GT, GL, GQ, QUAL
 
 
-def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, gt_round, gt_primary):
-    # print("in")
-    # return '1/1'
-    # status = 2 
-    # gt_round = 500
-    # max_cluster_bias = 1000
-    # import pysam
-    # bamfile = pysam.AlignmentFile(bam_path)
-    querydata = set()
-    search_start = max(int(search_threshold) - max_cluster_bias, 0)
-    # search_end = min(int(search_threshold) + max_cluster_bias, bamfile.get_reference_length(chr))
-    search_end = int(search_threshold) + max_cluster_bias
-    # if search_threshold == 118516185:
-    #     print(search_start,search_end)
-    up_bound = threshold_ref_count(len(read_id_list))
-    
-    status,querydata = count_coverage(reads_list, 
-                            search_start, 
-                            search_end,  
-                            up_bound, 
-                            gt_round, read_id_list, gt_primary)
-
-    # if search_threshold == 89700301:
-    #     print(status)
-    # if search_threshold == 118516185:
-    #     print(status)
-    #     print(len(querydata))
-    #     print(len(read_id_list))
-    # if len(read_id_list)==32:
-    #     print(search_threshold)
-    #     print("status")
-    #     print(status)
-
-    if status == -1:
-        # if search_threshold == 14962957:
-        #     print("hi")
-        DR = '.'
-        GT = "./."
-        GL = ".,.,."
-        GQ = "."
-        QUAL = "."
-
-    
-    else:
-        DR = 0
-        for query in querydata:
-            if query not in read_id_list:
-                DR += 1
-        # if search_threshold == 33759248:
-        #     print("DR")
-        #     print(DR)
-        #     print(len(read_id_list))
-        
-        if len(querydata) == 0:
-            GT = './.'
-        # else:
-            # if search_start == 42372687:
-            #     print(querydata)
-            #     print(search_threshold)
-            #     print(DR,len(read_id_list))
-        GT, GL, GQ, QUAL = cal_GL(DR, len(read_id_list))
-    
-    # if search_threshold == 33759248:
-    #         print("DR")
-    #         print(DR)
-    #         print(len(read_id_list))
-    
-    # if len(read_id_list) <= 5:
-    #     new_status,new_querydata = count_coverage(reads_list, 
-    #                         search_start, 
-    #                         search_end,  
-    #                         up_bound, 
-    #                         gt_round, read_id_list, gt_primary)
-
-    # GT = '1/1'
-    return DR, GT, GL, GQ, QUAL
-    # return GT
-# def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, gt_round):
+# def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, gt_round, gt_primary):
 #     # print("in")
-#     GT = '1/1'
-#     return GT
+#     # return '1/1'
+#     # status = 2 
+#     # gt_round = 500
+#     # max_cluster_bias = 1000
+#     # import pysam
+#     # bamfile = pysam.AlignmentFile(bam_path)
+#     querydata = set()
+#     search_start = max(int(search_threshold) - max_cluster_bias, 0)
+#     # search_end = min(int(search_threshold) + max_cluster_bias, bamfile.get_reference_length(chr))
+#     search_end = int(search_threshold) + max_cluster_bias
+#     # if search_threshold == 118516185:
+#     #     print(search_start,search_end)
+#     up_bound = threshold_ref_count(len(read_id_list))
+    
+#     status,querydata = count_coverage(reads_list, 
+#                             search_start, 
+#                             search_end,  
+#                             up_bound, 
+#                             gt_round, read_id_list, gt_primary)
+
+#     # if search_threshold == 89700301:
+#     #     print(status)
+#     # if search_threshold == 118516185:
+#     #     print(status)
+#     #     print(len(querydata))
+#     #     print(len(read_id_list))
+#     # if len(read_id_list)==32:
+#     #     print(search_threshold)
+#     #     print("status")
+#     #     print(status)
+
+#     if status == -1:
+#         # if search_threshold == 14962957:
+#         #     print("hi")
+#         DR = '.'
+#         GT = "./."
+#         GL = ".,.,."
+#         GQ = "."
+#         QUAL = "."
+
+    
+#     else:
+#         DR = 0
+#         for query in querydata:
+#             if query not in read_id_list:
+#                 DR += 1
+#         # if search_threshold == 33759248:
+#         #     print("DR")
+#         #     print(DR)
+#         #     print(len(read_id_list))
+        
+#         if len(querydata) == 0:
+#             GT = './.'
+#         # else:
+#             # if search_start == 42372687:
+#             #     print(querydata)
+#             #     print(search_threshold)
+#             #     print(DR,len(read_id_list))
+#         GT, GL, GQ, QUAL = cal_GL(DR, len(read_id_list))
+    
+#     # if search_threshold == 33759248:
+#     #         print("DR")
+#     #         print(DR)
+#     #         print(len(read_id_list))
+    
+#     # if len(read_id_list) <= 5:
+#     #     new_status,new_querydata = count_coverage(reads_list, 
+#     #                         search_start, 
+#     #                         search_end,  
+#     #                         up_bound, 
+#     #                         gt_round, read_id_list, gt_primary)
+
+#     # GT = '1/1'
+#     return DR, GT, GL, GQ, QUAL
+#     # return GT
+# # def call_gt(reads_list, search_threshold, chr, read_id_list, max_cluster_bias, gt_round):
+# #     # print("in")
+# #     GT = '1/1'
+# #     return GT
 
 def generate_final_ins(cluster_list,candidate_single_SV,chr,min_size):
     # max_support = 500
@@ -147,6 +147,8 @@ def generate_final_ins(cluster_list,candidate_single_SV,chr,min_size):
         candidate_single_SV.append([chr, "INS", str(int(ins_start)), str(int(ins_len)), str(len(cluster_list)), \
             str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
     # print(candidate_single_SV)
+
+
 
 def generate_final_del(cluster_list,candidate_single_SV,chr, reads_info_dict):
     new_max_cluster_bias = 1000
@@ -174,11 +176,15 @@ def generate_final_del(cluster_list,candidate_single_SV,chr, reads_info_dict):
             gt_primary = 1
         # if len(cluster_list) == 17:
         #     print(del_start)
-        DR, GT, GL, GQ, QUAL = call_gt(reads_info_dict, del_start, chr, read_id_list, new_max_cluster_bias, gt_round, gt_primary)
+        # DR, GT, GL, GQ, QUAL = call_gt(reads_info_dict, del_start, chr, read_id_list, new_max_cluster_bias, gt_round, gt_primary)
         # GT= call_gt(reads_info_dict, del_start, chr, read_id_list, new_max_cluster_bias, gt_round, gt_primary)
 
-        candidate_single_SV.append([chr, "DEL", str(int(del_start)), str(int(del_len)), str(len(cluster_list)), \
-            str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
+        # candidate_single_SV.append([chr, "DEL", str(int(del_start)), str(int(del_len)), str(len(cluster_list)), \
+        #     str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
+
+        candidate_single_SV.append([chr, "DEL", int(del_start), int(del_len), len(cluster_list), \
+            str(CIPOS), str(CILEN),read_id_list])
+        
         
         # flag = 0
         # for ele in candidate_single_SV:
@@ -351,7 +357,7 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, l
             
             DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * standard_len
             to_SV_list.append(ele)
-            print(to_SV_list)
+            # print(to_SV_list)
     #对最后一个堆的判定
     if len(to_SV_list) >= min_support:
         # if length_ratio:
@@ -363,7 +369,7 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, l
         #     print("to_sv_list")
         #     print(to_SV_list)
         # print("sv_list")
-        print(to_SV_list)
+        # print(to_SV_list)
         generate_final_del(to_SV_list,candidate_single_SV,chr, reads_info_dict)
         # generate_final_del(to_SV_list,candidate_single_SV,chr)
     
@@ -471,7 +477,7 @@ def resolution_DEL(sigs_path,chr,min_support,length_ratio, reads_info_dict,bam_p
         ins_len = int(seq[3])
         read_id = seq[4]
         sig_origin = int(seq[5])
-        print(ins_pos,chr)
+        # print(ins_pos,chr)
         #初始的第一个sig放进cluster中进行处理
         if len(cluster_list) == 0:
             cluster_list.append([ins_pos, ins_len, read_id, sig_origin])
@@ -504,7 +510,100 @@ def resolution_DEL(sigs_path,chr,min_support,length_ratio, reads_info_dict,bam_p
         cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support,\
             length_ratio, reads_info_dict,bam_path)
     file.close()
-    return candidate_single_SV
+    # print(candidate_single_SV)
+    # print(len(candidate_single_SV))
+    iteration_dict, primary_num_dict, cover_dict = overlap_cover(candidate_single_SV, reads_info_dict) # both key(sv idx), value(set(read id))
+    read_id_dict = list()
+    for i in candidate_single_SV:
+        read_id_dict.append(i[7])
+    assign_list = assign_gt(iteration_dict, primary_num_dict, cover_dict,read_id_dict)
+    # print(assign_list)
+# assign_list.append([len(read_id_dict[idx]), DR, GT, GL, GQ, QUAL])
+    # candidate_single_SV.append([chr, "DEL", str(int(del_start)), str(int(del_len)), str(len(cluster_list)), \
+        #     str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
+    
+    final_sv_list = list()
+    for i in range(len(assign_list)):
+        final_sv_list.append([chr,"DEL",str(candidate_single_SV[i][2]),str(candidate_single_SV[i][3]),\
+            str(assign_list[i][0]),str(candidate_single_SV[i][5]),str(candidate_single_SV[i][6]),\
+            str(assign_list[i][1]),str(assign_list[i][2]),str(assign_list[i][3]),str(assign_list[i][4]),str(assign_list[i][5])])
+    return final_sv_list
+    # return candidate_single_SV
+
+def overlap_cover(svs_list, reads_list):
+    # [(10024, 12024), (89258, 91258), ...]
+    # [[10000, 10468, 0, 'm54238_180901_011437/52298335/ccs'], [10000, 17490, 1, 'm54238_180901_011437/44762027/ccs'], ...]
+    sort_list = list()
+    idx = 0
+    for i in reads_list:
+        sort_list.append([i[0], 1, idx, i[2], i[3]])
+        sort_list.append([i[1], 2, idx, i[2], i[3]])
+        idx += 1
+    idx = 0
+    for i in svs_list:
+        sort_list.append([i[2]-1000, 3, idx])
+        sort_list.append([i[2]+1000, 0, idx])
+        idx += 1
+    sort_list = sorted(sort_list, key = lambda x:(x[0], x[1]))
+    svs_set = set()
+    read_set = set()
+    overlap_dict = dict()
+    cover_dict = dict()
+    for node in sort_list:
+        if node[1] == 1: # set2(read) left
+            read_set.add(node[2])
+            for x in svs_set:
+                if svs_list[x][1] == node[0]:
+                    continue
+                if x not in overlap_dict:
+                    overlap_dict[x] = set()
+                overlap_dict[x].add(node[2])
+        elif node[1] == 2: # set2(read) right
+            read_set.remove(node[2])
+        elif node[1] == 3: # set1(sv) left
+            svs_set.add(node[2])
+            overlap_dict[node[2]] = set()
+            for x in read_set:
+                overlap_dict[node[2]].add(x)
+            cover_dict[node[2]] = set()
+            for x in read_set:
+                cover_dict[node[2]].add(x)
+        elif node[1] == 0: # set1(sv) right
+            svs_set.remove(node[2])
+            temp_set = set()
+            for x in read_set:
+                temp_set.add(x)
+            cover_dict[node[2]] = cover_dict[node[2]] & temp_set
+    cover2_dict = dict()
+    iteration_dict = dict()
+    primary_num_dict = dict()
+    for idx in cover_dict:
+        iteration_dict[idx] = len(overlap_dict[idx])
+        primary_num_dict[idx] = 0
+        for x in overlap_dict[idx]:
+            if reads_list[x][2] == 1:
+                primary_num_dict[idx] += 1
+        cover2_dict[idx] = set()
+        for x in cover_dict[idx]:
+            if reads_list[x][2] == 1:
+                cover2_dict[idx].add(reads_list[x][3])
+    # duipai(svs_list, reads_list, iteration_dict, primary_num_dict, cover2_dict)
+    return iteration_dict, primary_num_dict, cover2_dict
+
+def assign_gt(iteration_dict, primary_num_dict, cover_dict, read_id_dict):
+    assign_list = list()
+    for idx in range(len(read_id_dict)):
+        iteration = iteration_dict[idx]
+        primary_num = primary_num_dict[idx]
+        read_count = cover_dict[idx]
+        DR = 0
+        for query in read_count:
+            if query not in read_id_dict[idx]:
+                DR += 1
+        GT, GL, GQ, QUAL = cal_GL(DR, len(read_id_dict[idx]))
+        assign_list.append([len(read_id_dict[idx]), DR, GT, GL, GQ, QUAL])
+    return assign_list
+
 
 def run_ins(args):
    '''

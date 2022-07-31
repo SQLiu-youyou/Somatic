@@ -87,82 +87,82 @@ def cal_GL(c0, c1):
 # 	return status
 
 
-def count_coverage(reads_list, search_start, search_end, up_bound, itround,\
-    read_id_list, gt_primary):
-    status = 0
-    iteration = 0
-    primary_num = 0
-    read_count = set()
-    iteration_set = set()
+# def count_coverage(reads_list, search_start, search_end, up_bound, itround,\
+#     read_id_list, gt_primary):
+#     status = 0
+#     iteration = 0
+#     primary_num = 0
+#     read_count = set()
+#     iteration_set = set()
 
-    # if search_start == 248554444:
-    #     print(gt_primary)
+#     # if search_start == 248554444:
+#     #     print(gt_primary)
 
-    for read in reads_list:
-        if (read[0] <= search_start and read[1] > search_start) or (search_start < read[0] < search_end):
-            iteration += 1
-            iteration_set.add(read[3])
-            if read[2] == 0:
-                continue
-            primary_num += 1
-            if read[0] < search_start and read[1] > search_end:
-                read_count.add(read[3])
-                if len(read_count) >= up_bound:
-                    status = 1
-                    break
-            if iteration >= itround:
-                if float(primary_num / iteration) <= 0.2:
-                    status = 1
-                else:
-                    status = -1
-                break
+#     for read in reads_list:
+#         if (read[0] <= search_start and read[1] > search_start) or (search_start < read[0] < search_end):
+#             iteration += 1
+#             iteration_set.add(read[3])
+#             if read[2] == 0:
+#                 continue
+#             primary_num += 1
+#             if read[0] < search_start and read[1] > search_end:
+#                 read_count.add(read[3])
+#                 if len(read_count) >= up_bound:
+#                     status = 1
+#                     break
+#             if iteration >= itround:
+#                 if float(primary_num / iteration) <= 0.2:
+#                     status = 1
+#                 else:
+#                     status = -1
+#                 break
     
-    if status == 0 and len(read_count) == 0:
-        read_count = iteration_set
+#     if status == 0 and len(read_count) == 0:
+#         read_count = iteration_set
 
-    # if search_start == 33758248:
-    #     print(read_count)
-    #     print(len(read_count))
-    #     print("iteration=%d"%(iteration))
-    #     print("primary_num=%d"%(primary_num))
+#     # if search_start == 33758248:
+#     #     print(read_count)
+#     #     print(len(read_count))
+#     #     print("iteration=%d"%(iteration))
+#     #     print("primary_num=%d"%(primary_num))
 
-    if search_start == 33758248:
-        # print(status)
-        # print(read_count)
-        # print(len(read_count))
-        print(gt_primary)
+#     if search_start == 33758248:
+#         # print(status)
+#         # print(read_count)
+#         # print(len(read_count))
+#         print(gt_primary)
     
-    # if len(read_count)*100 < iteration:
-    #     return status,iteration_set
+#     # if len(read_count)*100 < iteration:
+#     #     return status,iteration_set
 
-    if gt_primary == 1:
-        # if search_start == 65346002:
-        #     print(status)
-        #     print(read_count)
-        if len(read_count)*100 < iteration:
+#     if gt_primary == 1:
+#         # if search_start == 65346002:
+#         #     print(status)
+#         #     print(read_count)
+#         if len(read_count)*100 < iteration:
 
-            return status,iteration_set
-        else:
-            # if search_start == 33758248:
-            #     print(status)
-            #     print(read_count)
-            return status,read_count
-    else:
-        # if search_start == 14961957:
-        #     print(status)
-        #     print(len(iteration_set))
-        return status,iteration_set
+#             return status,iteration_set
+#         else:
+#             # if search_start == 33758248:
+#             #     print(status)
+#             #     print(read_count)
+#             return status,read_count
+#     else:
+#         # if search_start == 14961957:
+#         #     print(status)
+#         #     print(len(iteration_set))
+#         return status,iteration_set
 
-    # if len(read_count) < len(read_id_list):
-    #     return status,iteration_set         
+#     # if len(read_count) < len(read_id_list):
+#     #     return status,iteration_set         
     
-    # if search_start == 42372687:
-    #     print(read_count)
-    #     print(len(read_count))
-    #     print("iteration=%d"%(iteration))
-    #     print("primary_num=%d"%(primary_num))
+#     # if search_start == 42372687:
+#     #     print(read_count)
+#     #     print(len(read_count))
+#     #     print("iteration=%d"%(iteration))
+#     #     print("primary_num=%d"%(primary_num))
 
-    # return status,read_count
+#     # return status,read_count
 
 def threshold_ref_count(num):
     if num <= 2:

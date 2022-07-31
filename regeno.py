@@ -1,3 +1,5 @@
+from audioop import lin2ulaw
+import sqlite3
 import sys
 
 from numpy import size
@@ -90,6 +92,7 @@ if __name__=='__main__':
 
     tumor_ans = open(sys.argv[1],'r')
     for line in tumor_ans:
+        seq = line.strip().split('\t')
         chr = line.strip().split('\t')[0]
         support = int(line.strip().split('\t')[4])
         pos = int(line.strip().split('\t')[2])
@@ -105,9 +108,9 @@ if __name__=='__main__':
                     if flag:
                         continue
                     else:
-                        print(line.strip())
+                        print('\t'.join(seq[0:10])+'\t'+'low')
             else:
-                print(line.strip())
+                print('\t'.join(seq[0:10])+'\t'+'low')
         else:
             print(line.strip())
 

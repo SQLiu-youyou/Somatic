@@ -274,15 +274,15 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
                 
             #ins处理的时候，也需要加上read来源
             #INS
-            # if cigar_pair[0] in [0, 2, 7, 8]:
-            #     shift_ins += cigar_pair[1]
-            # if cigar_pair[0] == 1 and cigar_pair[1] >=  sig_min_cigar_size:
-            #     if process_signal == 1 or process_signal == 2:
-            #     # print(Combine_sig_in_same_read_del)
-            #         Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1],1])
-            #     # print(Combine_sig_in_same_read_ins)
-            #     else:
-            #         Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1],0])
+            if cigar_pair[0] in [0, 2, 7, 8]:
+                shift_ins += cigar_pair[1]
+            if cigar_pair[0] == 1 and cigar_pair[1] >=  sig_min_cigar_size:
+                if process_signal == 1 or process_signal == 2:
+                # print(Combine_sig_in_same_read_del)
+                    Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1],1])
+                # print(Combine_sig_in_same_read_ins)
+                else:
+                    Combine_sig_in_same_read_ins.append([read_align_start+shift_ins, cigar_pair[1],0])
 
         if read.cigar[-1][0] == 4:
             soft_right= read.cigar[-1][1]
@@ -299,7 +299,7 @@ def parse_read(chr_name, read, candidate, min_mapq, sig_min_cigar_size, max_spli
     #         print(read_name)
     
     #inter
-    # generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_ins,candidate,read_name, combine_min_size, 'INS')
+    generate_candidate_in_a_read(chr_name,Combine_sig_in_same_read_ins,candidate,read_name, combine_min_size, 'INS')
     
     # if Combine_sig_in_same_read_del != []:
     #     print(Combine_sig_in_same_read_del)
@@ -386,118 +386,121 @@ def multi_run_wrapper(args):
 def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor_or_normal,\
     lenth_ratio, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size, chase_ins_max_size,\
     combine_min_size, threshold_gloab, detailed_length_ratio):
-    # # 使用pysam将read读进程序，并保存
-    # normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
-    # # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
-    # chr_number = len(normal_sam_file.get_index_statistics())
-    # #区块划分基因组
-    # task_list = list()
-    # # read_coverage = dict()
-    # ref_name_list = list()
-    # reads_info_dict = dict() # reads_dict_pool["chr1"] = [start, end, is_primary, read_name]
+    # 使用pysam将read读进程序，并保存
+    normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
+    # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
+    chr_number = len(normal_sam_file.get_index_statistics())
+    #区块划分基因组
+    task_list = list()
+    # read_coverage = dict()
+    ref_name_list = list()
+    reads_info_dict = dict() # reads_dict_pool["chr1"] = [start, end, is_primary, read_name]
 
-    # for chr in normal_sam_file.get_index_statistics():
-    #     ref_name_list.append(chr[0])
-    #     #区域划分基因组，存储到task_list中e
-    #     interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
-    #     for i in range(0,interval+1):
-    #         if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
-    #             task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
-    #         else:
-    #             task_list.append([chr[0],i*batch,(i+1)*batch])
+    for chr in normal_sam_file.get_index_statistics():
+        ref_name_list.append(chr[0])
+        #区域划分基因组，存储到task_list中e
+        interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
+        for i in range(0,interval+1):
+            if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
+                task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
+            else:
+                task_list.append([chr[0],i*batch,(i+1)*batch])
     
-    # analysis_pools = Pool(processes=24)
-    # os.mkdir("%ssignatures"%"./")
-    # for task in task_list:
-    #     para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
-    #         chase_ins_max_size, combine_min_size)]
-        
-    #     # 使用多进程保存read_list
-    #     # if  not in reads_info_dict:
-    #     #     reads_info_dict[task[0]] = list()
-    #     # reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
-        
-    #     analysis_pools.map_async(multi_run_wrapper, para)
-    # analysis_pools.close()
-    # analysis_pools.join()
-
-
-    # # reads_info_dict = dict()
-    # # 把进程里的所有candidate放到最终处理的列表中
-    # # for chr in reads_dict_pool:
-    # #     reads_info_dict[chr] = list()
-    # #     for item in reads_dict_pool[chr]:
-    # #         try:
-    # #             reads_info_dict[chr].extend(item.get()[0])
-    # #         except:
-    # #             pass
-    # # for chr in reads_info_dict:
-    # #     print(chr + '\t' + str(len(reads_info_dict[chr])))
-
-    # print("Rebuilding signatures of structural variants.")
-    # analysis_pools = Pool(processes=24)
-    # cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    # cmd_del = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    # cmd_reads = ("cat %ssignatures/*.reads.bed > %s%sreads.sigs"%("./", "./", tumor_or_normal))
-    # # for i in [cmd_ins,cmd_del]:
-    # for i in [cmd_ins,cmd_del,cmd_reads]:
-    #     analysis_pools.map_async(os.system, (i,))
-    # analysis_pools.close()
-    # analysis_pools.join()
-
-
-    result_sv = list()
-    # '''
-    # 聚类
-    # '''
-    value_sv = load_sigs_chr('./',tumor_or_normal)
-
-    reads_info_dict = dict()
-    for chr in value_sv['DEL']:
-        reads_info_dict[chr] = list()
-    readsfile = open("%s%sreads.sigs"%("./", tumor_or_normal), 'r')
-    
-    for line in readsfile:
-        seq = line.strip().split('\t')
-        chr = seq[0]
-        if chr not in reads_info_dict:
-            reads_info_dict[chr] = list()
-        reads_info_dict[chr].append([int(seq[1]), int(seq[2]), int(seq[3]), seq[4]])
-    
-    readsfile.close()
-
     analysis_pools = Pool(processes=24)
-    # # for chr in value_sv['INS']:
-    # #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
-    # #         lenth_ratio, threshold_gloab, detailed_length_ratio)]
-    # #     result_sv.append(analysis_pools.map_async(run_ins,para))
-    # #     print("Finish %s:%s"%(chr,'INS'))
-    for chr in value_sv['DEL']:
-        para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'), chr, min_support,lenth_ratio, reads_info_dict[chr],bam_path)]
-        result_sv.append(analysis_pools.map_async(run_del,para))
-        print("Finish %s:%s"%(chr,'DEL'))
-
+    os.mkdir("%ssignatures"%"./")
+    for task in task_list:
+        para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
+            chase_ins_max_size, combine_min_size)]
         
+        # 使用多进程保存read_list
+        # if  not in reads_info_dict:
+        #     reads_info_dict[task[0]] = list()
+        # reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
+        
+        analysis_pools.map_async(multi_run_wrapper, para)
     analysis_pools.close()
     analysis_pools.join()
-     
-    # print("Writing to your output file.")
 
-    #把进程里的所有candidate放到最终处理的列表中
-    semi_result = list()
-    for res in result_sv:
-        try:
-            semi_result += res.get()[0]
-        except:
-            pass
-    #按照染色体和位置排序
-    semi_result = sorted(semi_result, key = lambda x:(x[0], int(x[2])))
-    # print(semi_result)
-    # print("Loading reference genome...")
-    # ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[3], "fasta"))
+
+    # reads_info_dict = dict()
+    # 把进程里的所有candidate放到最终处理的列表中
+    # for chr in reads_dict_pool:
+    #     reads_info_dict[chr] = list()
+    #     for item in reads_dict_pool[chr]:
+    #         try:
+    #             reads_info_dict[chr].extend(item.get()[0])
+    #         except:
+    #             pass
+    # for chr in reads_info_dict:
+    #     print(chr + '\t' + str(len(reads_info_dict[chr])))
+
+    print("Rebuilding signatures of structural variants.")
+    analysis_pools = Pool(processes=24)
+    cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    cmd_del = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    cmd_reads = ("cat %ssignatures/*.reads.bed > %s%sreads.sigs"%("./", "./", tumor_or_normal))
+    # for i in [cmd_ins,cmd_del]:
+    for i in [cmd_ins,cmd_del,cmd_reads]:
+        analysis_pools.map_async(os.system, (i,))
+    analysis_pools.close()
+    analysis_pools.join()
+
+
+    # result_sv = list()
+    # # '''
+    # # 聚类
+    # # '''
+    # value_sv = load_sigs_chr('./',tumor_or_normal)
+
+    # reads_info_dict = dict()
+    # for chr in value_sv['DEL']:
+    #     reads_info_dict[chr] = list()
+    # readsfile = open("%s%sreads.sigs"%("./", tumor_or_normal), 'r')
+    
+    # for line in readsfile:
+    #     seq = line.strip().split('\t')
+    #     chr = seq[0]
+    #     if chr not in reads_info_dict:
+    #         reads_info_dict[chr] = list()
+    #     reads_info_dict[chr].append([int(seq[1]), int(seq[2]), int(seq[3]), seq[4]])
+    
+    # readsfile.close()
+
+    # analysis_pools = Pool(processes=8)
+    # # # for chr in value_sv['INS']:
+    # # #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
+    # # #         lenth_ratio, threshold_gloab, detailed_length_ratio)]
+    # # #     result_sv.append(analysis_pools.map_async(run_ins,para))
+    # # #     print("Finish %s:%s"%(chr,'INS'))
+    # for chr in value_sv['DEL']:
+    #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'), chr, min_support,lenth_ratio, reads_info_dict[chr],bam_path)]
+    #     result_sv.append(analysis_pools.map_async(run_del,para))
+    #     print("Finish %s:%s"%(chr,'DEL'))
+
+        
+    # analysis_pools.close()
+    # analysis_pools.join()
+     
+    # # print("Writing to your output file.")
+
+    # #把进程里的所有candidate放到最终处理的列表中
+    # semi_result = list()
+    # for res in result_sv:
+    #     try:
+    #         semi_result += res.get()[0]
+    #     except:
+    #         pass
+    # #按照染色体和位置排序
+    # semi_result = sorted(semi_result, key = lambda x:(x[0], int(x[2])))
+    
+    # # print(semi_result)
+
+    # # print(semi_result)
+    # # print("Loading reference genome...")
+    # # ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[3], "fasta"))
     os.system("rm -r %ssignatures "%("./"))
     
-    return semi_result
+    # return semi_result
 
 def main_ctrl(args, argv):
     # batch = 10000000
