@@ -90,21 +90,40 @@ if __name__=='__main__':
             if i[11] == "." or i[11] == None:
                 filter_lable = "PASS"
             else:
-                filter_lable = "PASS" if float(i[11]) >= 5.0 else "q5"
-            file.write("{CHR}\t{POS}\t{ID}\t{REF}\t{ALT}\t{QUAL}\t{PASS}\t{INFO}\t{FORMAT}\t{GT}:{DR}:{RE}:{PL}:{GQ}\n".format(
-                CHR = i[0], 
-                POS = str(int(i[2])), 
-                ID = "%s.%d"%(i[1], svid[i[1]]),
-                # REF = str(ref_g[i[0]].seq[max(int(i[2])-1, 0)]) if i[1] == 'INS' else str(ref_g[i[0]].seq[max(int(i[2])-1, 0):int(i[2])+int(i[3])]),
-                REF = str(ref_g[i[0]].seq[max(int(i[2])-1, 0)]) if i[1] == 'INS' else "<DEL>",
-                ALT = "%s"%(str(ref_g[i[0]].seq[max(int(i[2])-1, 0)])+i[13] if i[1] == 'INS' else str(ref_g[i[0]].seq[max(int(i[2])-1, 0)])), 
-                INFO = info_list, 
-                FORMAT = "GT:DR:DV:PL:GQ", 
-                GT = i[8],
-                DR = i[7],
-                RE = i[4],
-                PL = i[9],
-                GQ = i[10],
-                QUAL = i[11],
-                PASS = filter_lable))
-            svid[i[1]] += 1
+                filter_lable = "PASS" if str(i[11]) != 'low' else "Low_Con"
+            if i[1] == "INS":   
+                file.write("{CHR}\t{POS}\t{ID}\t{REF}\t{ALT}\t{QUAL}\t{PASS}\t{INFO}\t{FORMAT}\t{GT}:{DR}:{RE}:{PL}:{GQ}\n".format(
+                    CHR = i[0], 
+                    POS = str(int(i[2])), 
+                    ID = "%s.%d"%(i[1], svid[i[1]]),
+                    # REF = str(ref_g[i[0]].seq[max(int(i[2])-1, 0)]) if i[1] == 'INS' else str(ref_g[i[0]].seq[max(int(i[2])-1, 0):int(i[2])+int(i[3])]),
+                    REF = ".",
+                    ALT = "INS", 
+                    INFO = info_list, 
+                    FORMAT = "GT:DR:DV:PL:GQ", 
+                    GT = i[8],
+                    DR = i[7],
+                    RE = i[4],
+                    PL = i[9],
+                    GQ = i[10],
+                    QUAL = i[11],
+                    PASS = filter_lable))
+                svid[i[1]] += 1
+            elif i[1] == "DEL":
+                file.write("{CHR}\t{POS}\t{ID}\t{REF}\t{ALT}\t{QUAL}\t{PASS}\t{INFO}\t{FORMAT}\t{GT}:{DR}:{RE}:{PL}:{GQ}\n".format(
+                    CHR = i[0], 
+                    POS = str(int(i[2])), 
+                    ID = "%s.%d"%(i[1], svid[i[1]]),
+                    # REF = str(ref_g[i[0]].seq[max(int(i[2])-1, 0)]) if i[1] == 'INS' else str(ref_g[i[0]].seq[max(int(i[2])-1, 0):int(i[2])+int(i[3])]),
+                    REF = ".",
+                    ALT = "DEL", 
+                    INFO = info_list, 
+                    FORMAT = "GT:DR:DV:PL:GQ", 
+                    GT = i[8],
+                    DR = i[7],
+                    RE = i[4],
+                    PL = i[9],
+                    GQ = i[10],
+                    QUAL = i[11],
+                    PASS = filter_lable))
+                svid[i[1]] += 1

@@ -67,10 +67,14 @@ def call_new_gt(reads_list, search_threshold, read_id_num, max_cluster_bias, gt_
 
     
     else:
+        # print(search_threshold)
         # print(querydata)
-        DR = len(querydata) - read_id_num
+        if len(querydata) == 0 or len(querydata) < read_id_num:
+            GT = '0/0' 
+        else:
+            DR = len(querydata) - read_id_num
 
-        GT, GL, GQ, QUAL = cal_GL(DR, read_id_num)
+            GT, GL, GQ, QUAL = cal_GL(DR, read_id_num)
 
     return GT,flag    
 
@@ -108,9 +112,9 @@ if __name__=='__main__':
                     if flag:
                         continue
                     else:
-                        print('\t'.join(seq[0:10])+'\t'+'low')
+                        print('\t'.join(seq[0:11])+'\t'+'low')
             else:
-                print('\t'.join(seq[0:10])+'\t'+'low')
+                print('\t'.join(seq[0:11])+'\t'+'low')
         else:
             print(line.strip())
 

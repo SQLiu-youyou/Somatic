@@ -1,3 +1,4 @@
+from hashlib import new
 from re import S, X
 from tkinter import E
 from turtle import right
@@ -132,20 +133,32 @@ from genotype import *
 # #     GT = '1/1'
 # #     return GT
 
-def generate_final_ins(cluster_list,candidate_single_SV,chr,min_size):
+def generate_final_ins(cluster_list,candidate_single_SV,chr, reads_info_dict):
     # max_support = 500
+    new_max_cluster_bias = 1000
+    gt_round = 500
+    gt_thres = 0.7
     ins_start = int(np.mean([i[0] for i in cluster_list]))
     ins_len = int(np.mean([i[1] for i in cluster_list]))
-    if ins_len >= min_size :
+    if ins_len >= 20 :
         CIPOS = cal_CIPOS(np.std([i[0] for i in cluster_list]), len([i[0] for i in cluster_list]))
         CILEN = cal_CIPOS(np.std([i[1] for i in cluster_list]), len([i[1] for i in cluster_list]))
-        DR = '.'
-        GT = './.'
-        GL = '.,.,.'
-        GQ = "."
-        QUAL = "."
-        candidate_single_SV.append([chr, "INS", str(int(ins_start)), str(int(ins_len)), str(len(cluster_list)), \
-            str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
+        # DR = '.'
+        # GT = './.'
+        # GL = '.,.,.'
+        # GQ = "."
+        # QUAL = "."
+        read_id_list = list()
+        for ele in cluster_list:
+            read_id_list.append(ele[2])
+        if np.sum(i[3] for i in cluster_list)/len(cluster_list) < 0.3:
+            gt_primary = 0
+        else:
+            gt_primary = 1
+        candidate_single_SV.append([chr, "INS", int(ins_start), int(ins_len), len(cluster_list), \
+            str(CIPOS), str(CILEN),read_id_list])
+        # candidate_single_SV.append([chr, "INS", str(int(ins_start)), str(int(ins_len)), str(len(cluster_list)), \
+        #     str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
     # print(candidate_single_SV)
 
 
@@ -195,9 +208,9 @@ def generate_final_del(cluster_list,candidate_single_SV,chr, reads_info_dict):
         #         flag = 1
                 
 
-def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio, threshold_gloab,\
-    detailed_length_ratio):
-    # threshold_gloab = 0.2
+def cluster_through_len_ins(cluster_list,chr,candidate_single_SV, min_support, length_ratio, \
+    reads_info_dict,bam_path):
+    threshold_gloab = 0.1
     # detailed_length_ratio = 0.8
     '''
     第二轮按INS_len聚类
@@ -225,13 +238,14 @@ def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min
     ***********************************************************************
     '''
     # ins_pos ins_len read_id
-    SortedList = sorted(list(reserved_read.values()), key = lambda x:x[1])
-    # SortedList = sorted(cluster_list, key=lambda x:x[1])
+    # SortedList = sorted(list(reserved_read.values()), key = lambda x:x[1])
+    SortedList = sorted(cluster_list, key=lambda x:x[1])
     # print(SortedList)
     standard_len = SortedList[0][1]
-    global_len = [i[1] for i in SortedList]
+    # global_len = [i[1] for i in SortedList]
     # 按ins_len聚类是，允许的len差值的最大值
-    DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * np.mean(global_len)
+    # DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * np.mean(global_len)
+    DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * standard_len
     
     # for ele in cluster_list:
     #     if ele[0]>= 13468446 and ele[0] <= 13468483:
@@ -245,26 +259,31 @@ def cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min
         if ele[1] - standard_len < DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP:
             to_SV_list.append(ele)
             standard_len = ele[1]
+            DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = np.mean([i[1] for i in to_SV_list]) * threshold_gloab
         #不是一个堆了，判断当前是否足以支持一个变异，并重新申请cluster_list
         else:
-            if len(to_SV_list) >= 0.9 * min_support:
+            if len(to_SV_list) >= min_support:
                 # if ele[0] == 129771776:
                 #     print(to_SV_list)
-                if lenth_ratio:
-                    if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
-                        generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
-                else:
-                    generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+                # if lenth_ratio:
+                #     if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+                #         generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+                # else:
+                #     generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+                generate_final_ins(to_SV_list,candidate_single_SV,chr, reads_info_dict)
             to_SV_list = list()
             standard_len = ele[1]
+            
+            DISCRETE_THRESHOLD_LEN_CLUSTER_INS_TEMP = threshold_gloab * standard_len
             to_SV_list.append(ele)
     #对最后一个堆的判定
-    if len(to_SV_list) >= 0.9 * min_support:
-        if lenth_ratio:
-            if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
-                generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
-        else:
-            generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+    if len(to_SV_list) >= min_support:
+        # if lenth_ratio:
+        #     if len(to_SV_list) / len(cluster_list) >= detailed_length_ratio:
+        #         generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+        # else:
+        #     generate_final_ins(to_SV_list,candidate_single_SV,chr,min_size)
+        generate_final_ins(to_SV_list,candidate_single_SV,chr, reads_info_dict)
 
 def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, length_ratio, \
     reads_info_dict,bam_path):
@@ -405,8 +424,9 @@ def cluster_through_len_del(cluster_list,chr,candidate_single_SV, min_support, l
     #     # print(to_SV_list)
     #     # generate_final_del(to_SV_list,candidate_single_SV,chr)
 
-def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size, lenth_ratio, threshold_gloab, detailed_length_ratio):
+def resolution_INS(sigs_path,chr,min_support,length_ratio, reads_info_dict,bam_path):
     #首先按照起始位点坐标，sigs聚成一类
+    max_cluster_bias = 100
     '''
     第一轮按INS_pos聚类
     1.将相近的ins sigs聚成一个cluster(max_cluster_bias = 100)
@@ -424,33 +444,53 @@ def resolution_INS(sigs_path,chr,max_cluster_bias,min_support,min_size, lenth_ra
         ins_pos = int(seq[2])
         ins_len = int(seq[3])
         read_id = seq[4]
+        sig_origin = int(seq[5])
         #初始的第一个sig放进cluster中进行处理
         if len(cluster_list) == 0:
-            cluster_list.append([ins_pos, ins_len, read_id])
+            cluster_list.append([ins_pos, ins_len, read_id,sig_origin])
             # print(cluster_list)
             continue
         #在一定位置阈值内的均放在cluster当中
         if ins_pos - cluster_list[-1][0] <= max_cluster_bias:
-            cluster_list.append([ins_pos, ins_len, read_id])
+            cluster_list.append([ins_pos, ins_len, read_id,sig_origin])
         #否则 判断cluster中的条数，是否大于-s
         else:
             if len(cluster_list) >= min_support:
                 # if ins_pos == 2584331:
                 #     print(cluster_list)
                 #     print(len(cluster_list))
-                cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio,\
-                    threshold_gloab, detailed_length_ratio)
+                cluster_through_len_ins(cluster_list,chr,candidate_single_SV,min_support,\
+                    length_ratio, reads_info_dict,bam_path)
             #无论继续处理与否，都需要将当前sig放入新一轮的处理中
             cluster_list = list()
-            cluster_list.append([ins_pos, ins_len, read_id])
+            cluster_list.append([ins_pos, ins_len, read_id, sig_origin])
             # print(cluster_list)
     #对最后一个cluster的处理
     if len(cluster_list) >= min_support:
         # print(cluster_list)
-        cluster_through_len_ins(cluster_list,chr,min_support,candidate_single_SV,min_size,lenth_ratio,\
-            threshold_gloab, detailed_length_ratio)
+        cluster_through_len_ins(cluster_list,chr,candidate_single_SV,min_support,\
+                    length_ratio, reads_info_dict,bam_path)
     file.close()
-    return candidate_single_SV
+
+    iteration_dict, primary_num_dict, cover_dict = overlap_cover(candidate_single_SV, reads_info_dict) # both key(sv idx), value(set(read id))
+    read_id_dict = list()
+    for i in candidate_single_SV:
+        read_id_dict.append(i[7])
+    assign_list = assign_gt(iteration_dict, primary_num_dict, cover_dict,read_id_dict)
+    # print(assign_list)
+# assign_list.append([len(read_id_dict[idx]), DR, GT, GL, GQ, QUAL])
+    # candidate_single_SV.append([chr, "DEL", str(int(del_start)), str(int(del_len)), str(len(cluster_list)), \
+        #     str(CIPOS), str(CILEN), str(DR), str(GT), str(GL), str(GQ), str(QUAL)])
+    
+    final_sv_list = list()
+    for i in range(len(assign_list)):
+
+        final_sv_list.append([chr,"INS",str(candidate_single_SV[i][2]),str(candidate_single_SV[i][3]),\
+            str(assign_list[i][0]),str(candidate_single_SV[i][5]),str(candidate_single_SV[i][6]),\
+            str(assign_list[i][1]),str(assign_list[i][2]),str(assign_list[i][3]),str(assign_list[i][4]),str(assign_list[i][5])])
+    return final_sv_list
+    
+    # return candidate_single_SV
 
 def resolution_DEL(sigs_path,chr,min_support,length_ratio, reads_info_dict,bam_path):
     #clr 200 ont 100
@@ -527,6 +567,8 @@ def resolution_DEL(sigs_path,chr,min_support,length_ratio, reads_info_dict,bam_p
         final_sv_list.append([chr,"DEL",str(candidate_single_SV[i][2]),str(candidate_single_SV[i][3]),\
             str(assign_list[i][0]),str(candidate_single_SV[i][5]),str(candidate_single_SV[i][6]),\
             str(assign_list[i][1]),str(assign_list[i][2]),str(assign_list[i][3]),str(assign_list[i][4]),str(assign_list[i][5])])
+
+            # print(final_sv_list)
     return final_sv_list
     # return candidate_single_SV
 
@@ -601,6 +643,7 @@ def assign_gt(iteration_dict, primary_num_dict, cover_dict, read_id_dict):
             if query not in read_id_dict[idx]:
                 DR += 1
         GT, GL, GQ, QUAL = cal_GL(DR, len(read_id_dict[idx]))
+        
         assign_list.append([len(read_id_dict[idx]), DR, GT, GL, GQ, QUAL])
     return assign_list
 
