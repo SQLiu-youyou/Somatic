@@ -68,10 +68,10 @@ def load_sigs_chr(path):
     return sigs_chr
 
 
-def resolution_DEL(path,chr):
+def resolution_DEL(path,chr,file1):
     # print("resolution")
     candidate = list()
-    normal_sv_file = open(sys.argv[1],'r')
+    normal_sv_file = open(file1,'r')
     normal_sv = dict()
     normal_sv['DEL'] = dict()
     normal_sv_200 = dict()
@@ -175,9 +175,11 @@ def resolution_DEL(path,chr):
                     del_start = int(line.strip().split('\t')[2])
                     # print(del_start)
                     del_len = int(line.strip().split('\t')[3])
-                    if del_len < 100:
+                    if del_len < 50:
+                    # if del_len < 100:
                         bias = 200
-                        len_similarity = 0.8
+                        # len_similarity = 0.8
+                        len_similarity = 0.7
                         if i != 0:
                             if del_start == last_pos and del_len == last_len:
                                 if  flag == 1:
@@ -372,7 +374,7 @@ def run_del(args):
     # print("in")
     return resolution_DEL(*args)
 
-if __name__=='__main__':
+def reduce_del_signature(file1,file2,output):
 
     # sorted_normal_sv = dict()
     # sorted_normal_sv['DEL'] = dict()
@@ -380,15 +382,15 @@ if __name__=='__main__':
     
     # print(normal_sv)
     
-    analysis_pools = Pool(processes=16)
+    analysis_pools = Pool(processes=4)
     
-    value_sv = load_sigs_chr(sys.argv[2])
+    value_sv = load_sigs_chr(file2)
     # print(value_sv)
     result_sv = list()
 
     for chr in value_sv['DEL']:
         # print(chr)
-        para = [(sys.argv[2], chr)]
+        para = [(file2, chr,file1)]
         # run_del(para[0])
         # analysis_pools.map_async(run_del,para)
         result_sv.append(analysis_pools.map_async(run_del,para))
@@ -411,6 +413,6 @@ if __name__=='__main__':
     semi_result = sorted(semi_result, key = lambda x:(x[0]))
     # for ele in semi_result:
     #     print(ele)
-    ans = open(sys.argv[3],'w')
+    ans = open(output,'w')
     for ele in semi_result:
         ans.write(ele)

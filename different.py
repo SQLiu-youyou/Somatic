@@ -36,8 +36,9 @@ def query_sv_set(normal_sv_list,breakpoint,break_len):
     return False
 
 
-if __name__=='__main__':
-    normal_sv_file = open(sys.argv[1],'r')
+def nt_different(file1,file2,output):
+    minu_ans = list()
+    normal_sv_file = open(file1,'r')
     normal_sv = dict()
     normal_sv['INS'] = dict()
     normal_sv['DEL'] = dict()
@@ -58,19 +59,22 @@ if __name__=='__main__':
             if chr not in normal_sv['DEL']:
                 normal_sv['DEL'][chr] = list()
             normal_sv['DEL'][chr].append([del_start, del_len, del_end])
-
-    tumor_sv_file = open(sys.argv[2],'r')
+    minus_ans = open(output,'w')
+    tumor_sv_file = open(file2,'r')
     for line in tumor_sv_file:
         svtype = line.strip().split('\t')[1]
         support = int(line.strip().split('\t')[4])
+        
         if svtype == 'INS':
             chr = line.strip().split('\t')[0]
             if chr in normal_sv['INS']:
-        
                 breakpoint = line.strip().split('\t')[2]
                 break_len = line.strip().split('\t')[3]
                 if not query_sv_set(normal_sv['INS'][chr],breakpoint,break_len):
-                    print(line.strip())
+                    if int(break_len) > 30:
+                        if line.strip().split('\t')[8] != '0/0':
+                            # print(line.strip())
+                            minus_ans.write(line)
         if svtype == 'DEL':
             chr = line.strip().split('\t')[0]
             if chr in normal_sv['DEL']:
@@ -78,7 +82,10 @@ if __name__=='__main__':
                 del_len = line.strip().split('\t')[3]
                 if not query_sv_set(normal_sv['DEL'][chr], del_start, del_len):
                     if int(del_len) > 30 :
-                        print(line.strip())
+                        if line.strip().split('\t')[8] != '0/0':
+                            # print(line.strip())
+                            minus_ans.write(line)
+
 
 
 

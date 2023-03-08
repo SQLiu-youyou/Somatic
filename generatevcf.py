@@ -1,7 +1,7 @@
 # import imp
 import sys
 import pysam
-from Bio import SeqIO
+#from Bio import SeqIO
 
 def Generation_VCF_header(file, contiginfo):
     # General header
@@ -45,7 +45,8 @@ def Generation_VCF_header(file, contiginfo):
     # file.write("##CommandLine=\"cuteSV %s\"\n"%(" ".join(argv)))
 
 
-if __name__=='__main__':
+# if __name__=='__main__':
+def gene_vcf(bam_path,geno_ans):
 
     svid = dict()
     svid["INS"] = 0
@@ -53,18 +54,18 @@ if __name__=='__main__':
 
     file = open("tumor.vcf",'w')
 
-    samfile = pysam.AlignmentFile(sys.argv[1])
+    samfile = pysam.AlignmentFile(bam_path)
     contigINFO = list()
     ref_ = samfile.get_index_statistics()
     for i in ref_:
         local_ref_len = samfile.get_reference_length(i[0])
         contigINFO.append([i[0], local_ref_len])
-    ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[3], "fasta"))
+    # ref_g = SeqIO.to_dict(SeqIO.parse(fastq, "fasta"))
     
     Generation_VCF_header(file, contigINFO)
     file.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
     
-    inputfile = open(sys.argv[2],'r')
+    inputfile = open(geno_ans,'r')
     for line in inputfile:
         i = line.strip().split('\t')
         if i[1] in ["DEL", "INS"]:

@@ -78,7 +78,7 @@ def call_new_gt(reads_list, search_threshold, read_id_num, max_cluster_bias, gt_
 
     return GT,flag    
 
-if __name__=='__main__':
+def re_geno(file1,output):
     
     reads_info_dict = dict()
     
@@ -94,29 +94,42 @@ if __name__=='__main__':
     
     readsfile.close()
 
-    tumor_ans = open(sys.argv[1],'r')
+    geno_ans = open(output,'w')
+    tumor_ans = open(file1,'r')
     for line in tumor_ans:
         seq = line.strip().split('\t')
         chr = line.strip().split('\t')[0]
         support = int(line.strip().split('\t')[4])
         pos = int(line.strip().split('\t')[2])
         old_gt = line.strip().split('\t')[8]
+        new_gt,flag = call_new_gt(reads_info_dict[chr],pos,support,1000,500)
+        # if new_gt != old_gt:
+        #     continue
+        # else:
+        #     if support <=5 :
+        #         geno_ans.write('\t'.join(seq[0:11])+'\t'+'low'+'\n')
+        #     else:
+        #         geno_ans.write(line)
         if support <= 5:
             new_gt,flag = call_new_gt(reads_info_dict[chr],pos,support,1000,500)
             # print("new_gt")
             # print(new_gt)
             if new_gt != old_gt:
-                if old_gt == '1/1':
-                    continue
-                elif old_gt == '0/1':
-                    if flag:
-                        continue
-                    else:
-                        print('\t'.join(seq[0:11])+'\t'+'low')
+                # if old_gt == '1/1':
+                #     continue
+                # elif old_gt == '0/1':
+                #     if flag:
+                #         continue
+                #     else:
+                #         # print('\t'.join(seq[0:11])+'\t'+'low')
+                #         geno_ans.write('\t'.join(seq[0:11])+'\t'+'low'+'\n')
+                continue
             else:
-                print('\t'.join(seq[0:11])+'\t'+'low')
+                # print('\t'.join(seq[0:11])+'\t'+'low')
+                geno_ans.write('\t'.join(seq[0:11])+'\t'+'low'+'\n')
         else:
-            print(line.strip())
+            # print(line.strip())
+            geno_ans.write(line)
 
 
             

@@ -1,8 +1,15 @@
 from cgi import print_environ
 from telnetlib import WILL
-from turtle import pos
+#from turtle import pos
+
+from cv2 import minAreaRect
 from description import load_sigs_chr
 from cluster_INDEL import run_ins,resolution_INS,run_del
+from del_diff import reduce_del_signature
+from ins_diff import reduce_ins_signature
+from different import nt_different
+from regeno import re_geno
+from generatevcf import gene_vcf
 import statistics
 import sys
 from numpy import append, min_scalar_type, piecewise, promote_types
@@ -15,7 +22,7 @@ import os
 import argparse
 import time
 import gc
-from Bio import SeqIO
+#from Bio import SeqIO
 # from Bio import SeqIO
 
 
@@ -386,65 +393,142 @@ def multi_run_wrapper(args):
 def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor_or_normal,\
     lenth_ratio, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size, chase_ins_max_size,\
     combine_min_size, threshold_gloab, detailed_length_ratio):
-    # # 使用pysam将read读进程序，并保存
-    # normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
-    # # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
-    # chr_number = len(normal_sam_file.get_index_statistics())
-    # #区块划分基因组
-    # task_list = list()
-    # # read_coverage = dict()
-    # ref_name_list = list()
-    # reads_info_dict = dict() # reads_dict_pool["chr1"] = [start, end, is_primary, read_name]
+    # 使用pysam将read读进程序，并保存
+    normal_sam_file = pysam.AlignmentFile(bam_path,"rb")
+    # tumor_sam_file = pysam.AlignmentFile(sys.argv[2],"rb")
+    chr_number = len(normal_sam_file.get_index_statistics())
+    #区块划分基因组
+    task_list = list()
+    # read_coverage = dict()
+    ref_name_list = list()
+    reads_info_dict = dict() # reads_dict_pool["chr1"] = [start, end, is_primary, read_name]
 
-    # for chr in normal_sam_file.get_index_statistics():
-    #     ref_name_list.append(chr[0])
-    #     #区域划分基因组，存储到task_list中e
-    #     interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
-    #     for i in range(0,interval+1):
-    #         if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
-    #             task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
-    #         else:
-    #             task_list.append([chr[0],i*batch,(i+1)*batch])
+    for chr in normal_sam_file.get_index_statistics():
+        ref_name_list.append(chr[0])
+        #区域划分基因组，存储到task_list中e
+        interval = int(normal_sam_file.get_reference_length(chr[0])/batch)
+        for i in range(0,interval+1):
+            if (i+1) * batch > normal_sam_file.get_reference_length(chr[0]):
+                task_list.append([chr[0],i*batch,normal_sam_file.get_reference_length(chr[0])])
+            else:
+                task_list.append([chr[0],i*batch,(i+1)*batch])
     
-    # analysis_pools = Pool(processes=24)
-    # os.mkdir("%ssignatures"%"./")
-    # for task in task_list:
-    #     para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
-    #         chase_ins_max_size, combine_min_size)]
+    analysis_pools = Pool(processes=24)
+    
+    for task in task_list:
+        para = [(bam_path, task, min_mapq, sig_min_cigar_size, max_split_parts, chase_ins_min_size,\
+            chase_ins_max_size, combine_min_size)]
         
-    #     # 使用多进程保存read_list
-    #     # if  not in reads_info_dict:
-    #     #     reads_info_dict[task[0]] = list()
-    #     # reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
+        # 使用多进程保存read_list
+        # if  not in reads_info_dict:
+        #     reads_info_dict[task[0]] = list()
+        # reads_dict_pool[task[0]].append(analysis_pools.map_async(multi_run_wrapper, para))
         
-    #     analysis_pools.map_async(multi_run_wrapper, para)
+        analysis_pools.map_async(multi_run_wrapper, para)
+    analysis_pools.close()
+    analysis_pools.join()
+
+
+    # reads_info_dict = dict()
+    # 把进程里的所有candidate放到最终处理的列表中
+    # for chr in reads_dict_pool:
+    #     reads_info_dict[chr] = list()
+    #     for item in reads_dict_pool[chr]:
+    #         try:
+    #             reads_info_dict[chr].extend(item.get()[0])
+    #         except:
+    #             pass
+    # for chr in reads_info_dict:
+    #     print(chr + '\t' + str(len(reads_info_dict[chr])))
+
+    print("Rebuilding signatures of structural variants.")
+    analysis_pools = Pool(processes=24)
+    cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    cmd_del = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
+    cmd_reads = ("cat %ssignatures/*.reads.bed > %s%sreads.sigs"%("./", "./", tumor_or_normal))
+    # for i in [cmd_ins,cmd_del]:
+    for i in [cmd_ins,cmd_del,cmd_reads]:
+        analysis_pools.map_async(os.system, (i,))
+    analysis_pools.close()
+    analysis_pools.join()
+
+    #缩减信号
+    # if tumor_or_normal == 'tumor':
+    #     os.system("mkdir media_sigs")
+    #     os.system("python del_diff.py normalDEL.sigs tumorDEL.sigs > tumor.sigs")
+    #     os.system("python del_diff.py tumorDEL.sigs normalDEL.sigs > normal.sigs")
+    #     os.system("mv normalDEL.sigs media_sigs")
+    #     os.system("mv tumorDEL.sigs media_sigs")
+    #     os.system("mv tumor.sigs tumorDEL.sigs")
+    #     os.system("mv normal.sigs normalDEL.sigs")
+    #     os.system("python ins_diff.py normalINS.sigs tumorINS.sigs > tumor.sigs")
+    #     os.system("python ins_diff.py tumorINS.sigs normalINS.sigs > normal.sigs")
+    #     os.system("mv normalINS.sigs media_sigs")
+    #     os.system("mv tumorINS.sigs media_sigs")
+    #     os.system("mv tumor.sigs tumorINS.sigs")
+    #     os.system("mv normal.sigs normalINS.sigs")
+
+    # result_sv = list()
+    # # '''
+    # # 聚类
+    # # '''
+    # value_sv = load_sigs_chr('./',tumor_or_normal)
+
+    # reads_info_dict = dict()
+    # for chr in value_sv['DEL']:
+    #     reads_info_dict[chr] = list()
+    # readsfile = open("%s%sreads.sigs"%("./", tumor_or_normal), 'r')
+    
+    # for line in readsfile:
+    #     seq = line.strip().split('\t')
+    #     chr = seq[0]
+    #     if chr not in reads_info_dict:
+    #         reads_info_dict[chr] = list()
+    #     reads_info_dict[chr].append([int(seq[1]), int(seq[2]), int(seq[3]), seq[4]])
+    
+    # readsfile.close()
+
+    # analysis_pools = Pool(processes=4)
+    # # for chr in value_sv['INS']:
+    # #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,max_cluster_bias_INS,min_support,min_size,\
+    # #         lenth_ratio, threshold_gloab, detailed_length_ratio)]
+    # #     result_sv.append(analysis_pools.map_async(run_ins,para))
+    # #     print("Finish %s:%s"%(chr,'INS'))
+    # for chr in value_sv['INS']:
+    #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'INS'),chr,min_support,lenth_ratio, reads_info_dict[chr],bam_path)]
+    #     result_sv.append(analysis_pools.map_async(run_ins,para))
+    #     # print("Finish %s:%s"%(chr,'INS'))
+    # for chr in value_sv['DEL']:
+    #     para = [("%s%s%s.sigs"%('./', tumor_or_normal,'DEL'), chr, min_support,lenth_ratio, reads_info_dict[chr],bam_path)]
+    #     result_sv.append(analysis_pools.map_async(run_del,para))
+    #     # print("Finish %s:%s"%(chr,'DEL'))
+
+        
     # analysis_pools.close()
     # analysis_pools.join()
+     
+    # # print("Writing to your output file.")
 
+    # #把进程里的所有candidate放到最终处理的列表中
+    # semi_result = list()
+    # for res in result_sv:
+    #     try:
+    #         semi_result += res.get()[0]
+    #     except:
+    #         pass
+    # #按照染色体和位置排序
+    # semi_result = sorted(semi_result, key = lambda x:(x[0], int(x[2])))
+    
+    # # print(semi_result)
 
-    # # reads_info_dict = dict()
-    # # 把进程里的所有candidate放到最终处理的列表中
-    # # for chr in reads_dict_pool:
-    # #     reads_info_dict[chr] = list()
-    # #     for item in reads_dict_pool[chr]:
-    # #         try:
-    # #             reads_info_dict[chr].extend(item.get()[0])
-    # #         except:
-    # #             pass
-    # # for chr in reads_info_dict:
-    # #     print(chr + '\t' + str(len(reads_info_dict[chr])))
+    # # print(semi_result)
+    # # print("Loading reference genome...")
+    # # ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[3], "fasta"))
+    # os.system("rm -r %ssignatures "%("./"))
+    
+    # return semi_result
 
-    # print("Rebuilding signatures of structural variants.")
-    # analysis_pools = Pool(processes=24)
-    # cmd_ins = ("cat %ssignatures/*.bed | grep -w INS | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sINS.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    # cmd_del = ("cat %ssignatures/*.bed | grep -w DEL | sort -u -T %s | sort -k 2,2 -k 3,3n -T %s > %s%sDEL.sigs"%("./", "./", "./", "./", tumor_or_normal))
-    # cmd_reads = ("cat %ssignatures/*.reads.bed > %s%sreads.sigs"%("./", "./", tumor_or_normal))
-    # # for i in [cmd_ins,cmd_del]:
-    # for i in [cmd_ins,cmd_del,cmd_reads]:
-    #     analysis_pools.map_async(os.system, (i,))
-    # analysis_pools.close()
-    # analysis_pools.join()
-
+def cluster(min_support, bam_path,tumor_or_normal, lenth_ratio):
 
     result_sv = list()
     # '''
@@ -502,7 +586,7 @@ def solve_bam(batch, max_cluster_bias_INS, min_support, min_size, bam_path,tumor
     # print(semi_result)
     # print("Loading reference genome...")
     # ref_g = SeqIO.to_dict(SeqIO.parse(sys.argv[3], "fasta"))
-    os.system("rm -r %ssignatures "%("./"))
+    
     
     return semi_result
 
@@ -512,13 +596,70 @@ def main_ctrl(args, argv):
     # min_support = 3（49x）
     # min_size_INS = 20
     # lenth_ratio = 0
-    print("resolve normal bam")
+    # print("resolve normal bam")
     # normal_sv_list = solve_bam(10000000, 50, 3, 20, sys.argv[1], "normal",0)
-    normal_sv_list = solve_bam(args.batches, args.max_cluster_bias_INS, args.normal_min_support, \
-        args.normal_min_size, sys.argv[1], "normal", args.normal_length_ratio_flag, args.min_mapq, \
+    # normal_sv_list = solve_bam(args.batches, args.max_cluster_bias_INS, args.normal_min_support, \
+    #     args.normal_min_size, sys.argv[1], "normal", args.normal_length_ratio_flag, args.min_mapq, \
+    #     args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+    #     args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+
+    # os.mkdir("%ssignatures"%"./")
+    # print("Generate_normal_sigs")
+    # solve_bam(args.batches, args.max_cluster_bias_INS, 1, \
+    #     args.normal_min_size, sys.argv[1], "normal", args.normal_length_ratio_flag, 0, \
+    #     args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+    #     args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+    # os.system("rm -r %ssignatures "%("./"))
+    # os.mkdir("%ssignatures"%"./")
+    # print("Generate_tumor_sigs")
+    # solve_bam(args.batches, args.max_cluster_bias_INS, 2, \
+    #     args.tumor_min_size, sys.argv[2], "tumor", args.tumor_length_ratio_flag, 20, \
+    #     args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+    #     args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+    # os.system("rm -r %ssignatures "%("./"))
+
+    os.mkdir("%ssignatures"%"./")
+    print("Generate_normal_sigs")
+    solve_bam(args.batches, args.max_cluster_bias_INS, 1, \
+        args.normal_min_size, sys.argv[1], "normal", args.normal_length_ratio_flag, 0, \
         args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
         args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+    os.system("rm -r %ssignatures "%("./"))
+    os.mkdir("%ssignatures"%"./")
+    print("Generate_tumor_sigs")
+    solve_bam(args.batches, args.max_cluster_bias_INS, 2, \
+        args.tumor_min_size, sys.argv[2], "tumor", args.tumor_length_ratio_flag, 20, \
+        args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+        args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+    os.system("rm -r %ssignatures "%("./"))
+
+
+    print("Start reduce sigs")
+    os.system("mkdir media_sigs")
+    reduce_del_signature("normalDEL.sigs","tumorDEL.sigs","tumor.sigs")
+    # os.system("python del_diff.py normalDEL.sigs tumorDEL.sigs tumor.sigs")
+    reduce_del_signature("tumorDEL.sigs","normalDEL.sigs","normal.sigs")
+    # os.system("python del_diff.py tumorDEL.sigs normalDEL.sigs normal.sigs")
+    os.system("mv normalDEL.sigs media_sigs")
+    os.system("mv tumorDEL.sigs media_sigs")
+    os.system("mv tumor.sigs tumorDEL.sigs")
+    os.system("mv normal.sigs normalDEL.sigs")
     
+    reduce_ins_signature("normalINS.sigs","tumorINS.sigs","tumor.sigs")
+    reduce_ins_signature("tumorINS.sigs","normalINS.sigs","normal.sigs")
+    # os.system("python ins_diff.py normalINS.sigs tumorINS.sigs tumor.sigs")
+    # os.system("python ins_diff.py tumorINS.sigs normalINS.sigs normal.sigs")
+    os.system("mv normalINS.sigs media_sigs")
+    os.system("mv tumorINS.sigs media_sigs")
+    os.system("mv tumor.sigs tumorINS.sigs")
+    os.system("mv normal.sigs normalINS.sigs")
+    print("Finish reduce sigs")
+
+    
+    print("Cluster_normal_sigs")
+    normal_sv_list = cluster(args.normal_min_support, sys.argv[1], "normal", \
+        args.normal_length_ratio_flag)    
+
     file1 = open("normal_sv","w")
     for ele in normal_sv_list:
         for i in range(0,11):
@@ -526,18 +667,28 @@ def main_ctrl(args, argv):
         file1.write(str(ele[11])+'\n')
     file1.close()
     
+    print("Cluster_tumor_sigs")
+    tumor_sv_list = cluster(args.tumor_min_support, sys.argv[2], "tumor", \
+        args.tumor_length_ratio_flag)
 
-    # batch = 10000000
-    # max_cluster_bias_INS = 50
-    # min_support = 20（45x）
-    # min_size = 50
-    # len_ratio
-    print("resolve tumor bam")
+    file2 = open("tumor_sv","w")
+    for ele in tumor_sv_list:
+        for i in range(0,11):
+            file2.write(str(ele[i])+'\t')
+        file2.write(str(ele[11])+'\n')
+    file2.close()
+
+    # # batch = 10000000
+    # # max_cluster_bias_INS = 50
+    # # min_support = 20（45x）
+    # # min_size = 50
+    # # len_ratio
+    # print("FInish")
     # tumor_sv_list = solve_bam(10000000, 50, 20, 50, sys.argv[2], "tumor",1)
-    tumor_sv_list = solve_bam(args.batches, args.max_cluster_bias_INS, args.tumor_min_support, \
-        args.tumor_min_size, sys.argv[2], "tumor", args.tumor_length_ratio_flag, args.min_mapq, \
-        args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
-        args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
+    # tumor_sv_list = solve_bam(args.batches, args.max_cluster_bias_INS, args.tumor_min_support, \
+    #     args.tumor_min_size, sys.argv[2], "tumor", args.tumor_length_ratio_flag, args.min_mapq, \
+    #     args.sig_min_cigar_size, args.max_split_parts, args.chase_ins_min_size, args.chase_ins_max_size,\
+    #     args.combine_min_size, args.threshold_gloab, args.detailed_length_ratio)
 
     # file1 = open("normal_sv","w")
     # for ele in normal_sv_list:
@@ -546,12 +697,13 @@ def main_ctrl(args, argv):
     #     file1.write(str(ele[11])+'\n')
     # file1.close()
 
-    file2 = open("tumor_sv","w")
-    for ele in tumor_sv_list:
-        for i in range(0,11):
-            file2.write(str(ele[i])+'\t')
-        file2.write(str(ele[11])+'\n')
-    file2.close()
+    nt_different("normal_sv","tumor_sv","minus_ans")
+    
+    
+    
+    re_geno("minus_ans","geno_ans")
+    # print(minus_ans)
+    gene_vcf(sys.argv[2],"geno_ans")
 
 def run(argv):
     args = parseArgs(argv)

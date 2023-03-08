@@ -1,7 +1,7 @@
 from hashlib import new
-from re import S, X
-from tkinter import E
-from turtle import right
+#from re import S, X
+#from tkinter import E
+#from turtle import right
 import numpy as np
 from sortedcontainers import SortedDict, SortedList
 from genotype import *
